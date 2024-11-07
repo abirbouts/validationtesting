@@ -38,11 +38,11 @@ class PathManager:
     ICONS_PATH: Path = ROOT_PATH / 'validationtesting'/ 'gui' / 'assets' / 'icons'
 
     # Define the URL for documentation and GitHub repository
-    DOCS_URL: str = "https://microgridspy-documentation.readthedocs.io/en/latest/index.html"
-    GITHUB_URL: str = "https://github.com/SESAM-Polimi/MicroGridsPy-SESAM"
+    DOCS_URL: str = "https://github.com/abirbouts/validationtesting/wiki"
+    GITHUB_URL: str = "https://github.com/abirbouts/validationtesting"
 
     # Define the contact email
-    MAIL_CONTACT: str = "alessandro.onori@polimi.it"
+    MAIL_CONTACT: str = "abirbouts@ethz.ch"
 
     def __init__(self, project_name: str = "default"):
         self.project_name = project_name

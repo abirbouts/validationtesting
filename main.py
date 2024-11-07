@@ -31,9 +31,7 @@ st.set_page_config(
         'Get Help': PathManager.DOCS_URL,
         'Report a bug': f'mailto:{PathManager.MAIL_CONTACT}',
         'About': (
-            "**MicroGridsPy** has been developed within **SESAM group** in the *Department of Energy Engineering* at Politecnico di Milano."
-            "The research activity of SESAM focuses on the use of mathematical models for the study of systems, components and processes in the energy field and industrial ecology."
-            "MicroGridsPy is based on the original model by **Sergio Balderrama** (Universidad Mayor de San Simón) and **Sylvain Quoilin** (Université de Liège) and it is developed in the open on **GitHub**: Contributions are very welcome!"
+            "To Be Filled"
         )
     }
 )
