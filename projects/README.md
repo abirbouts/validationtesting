@@ -1,0 +1,1 @@
+In this folder, the yaml files, the inputs and the results of the project will be saved
