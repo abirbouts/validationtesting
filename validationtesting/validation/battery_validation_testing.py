@@ -16,35 +16,54 @@ def test_soc(battery_capacity, current_energy_stored, min_soc, max_soc):
     soc = (current_energy_stored / battery_capacity)  # SoC as a percentage of current effective capacity
     # Apply SoC limits
     if soc > max_soc:
-        return False
+        return soc, False
     elif soc < min_soc:
-        return False
+        return soc, False
     else:
-        return True
+        return soc, True
 
+def temporal_degradation_capacity(battery_capacity, degradation_rate, date, installation_date):
+    def get_years_since_install(installation_date, current_date):
+        # Ensure both are 'date' objects
+        installation_date = installation_date.date()
+        
+        # Calculate the difference in days and convert to years
+        days_since_install = (current_date - installation_date).days
+        years_since_install = days_since_install / 365.25
+        return years_since_install
+        
+    years_installed = get_years_since_install(installation_date, date)
+    battery_capacity = battery_capacity * (1- (degradation_rate) * years_installed)
+    return battery_capacity
+    
 def battery_validation_testing():
-    logging.info('running battery validation testing')
+    logging.info('Running battery validation testing')
     project_name = st.session_state.get("project_name")
     battery_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"model_output_battery.csv"
     battery_data = pd.read_csv(battery_data_path)
 
     num_units = st.session_state.battery_num_units
-    scope = st.session_state.battery_model_output_scope 
+    scope = st.session_state.battery_model_output_scope
     max_charge_powers = st.session_state.battery_max_charge_power
     max_discharge_powers = st.session_state.battery_max_discharge_power
     installation_dates = st.session_state.battery_installation_dates_utc
     lifetime = st.session_state.battery_lifetime
     battery_type = st.session_state.battery_type
-    battery_capacity = st.session_state.battery_capacity
+    initial_battery_capacity = st.session_state.battery_capacity
     initial_soc = [x / 100 for x in st.session_state.battery_initial_soc]
     charging_efficiency = [x / 100 for x in st.session_state.battery_charging_efficiency]
     discharging_efficiency = [x / 100 for x in st.session_state.battery_discharging_efficiency]
     inverter_efficiency = [x / 100 for x in st.session_state.battery_inverter_efficiency]
     min_soc = [x / 100 for x in st.session_state.battery_min_soc]
     max_soc = [x / 100 for x in st.session_state.battery_max_soc]
+    inverter_efficiency = [x / 100 for x in st.session_state.battery_inverter_efficiency]
+    temporal_degradation_rate = [x / 100 for x in st.session_state.battery_temporal_degradation_rate]
 
     if scope == "Per Unit":
         for unit in range(num_units):
+            battery_data[f"Energy_Stored_{unit+1}"] = None
+            battery_data[f"Capacity_{unit+1}"] = None
+            battery_data[f"SoC_Unit_{unit+1}"] = None
             battery_data[f"Charge_Power_Constraints_Unit_{unit+1}"] = None 
             battery_data[f"SoC_Constraints_Unit_{unit+1}"] = None
     else:
@@ -63,20 +82,25 @@ def battery_validation_testing():
                 else:
                     max_charge_power = max_charge_powers[type_int-1]
                     max_discharge_power = max_discharge_powers[type_int-1]
-
                 battery_power = battery_data[f'Model battery Power Unit {unit + 1}'][i]
                 if i == 0:
-                    current_energy_stored = initial_soc[type_int-1] * battery_capacity[type_int-1]
-                if battery_power <= 0:
-                    current_energy_stored -= battery_power * charging_efficiency[type_int-1] * inverter_efficiency[type_int-1]
-                else:
-                    current_energy_stored -= battery_power / (discharging_efficiency[type_int-1] * inverter_efficiency[type_int-1])
+                    current_energy_stored = initial_soc[type_int-1] * initial_battery_capacity[type_int-1]
+                    battery_capacity = initial_battery_capacity[type_int-1]
+                if st.session_state.battery_inverter_eff_included:
+                    if battery_power <= 0:
+                        current_energy_stored -= battery_power * charging_efficiency[type_int-1]
+                    else:
+                        current_energy_stored -= battery_power / (discharging_efficiency[type_int-1])
+                if st.session_state.battery_temporal_degradation:
+                    battery_capacity = temporal_degradation_capacity(initial_battery_capacity[type_int-1], temporal_degradation_rate[type_int-1], time.date(), installation_dates[unit])
                 battery_data[f"Charge_Power_Constraints_Unit_{unit+1}"][i] = test_charging_rate(battery_power, max_charge_power, max_discharge_power)
-                battery_data[f"SoC_Constraints_Unit_{unit+1}"][i] = test_soc(battery_capacity, current_energy_stored, min_soc[type_int-1], max_soc[type_int-1])
+                battery_data[f"SoC_Unit_{unit+1}"][i], battery_data[f"SoC_Constraints_Unit_{unit+1}"][i] = test_soc(battery_capacity, current_energy_stored, min_soc[type_int-1], max_soc[type_int-1])
+                battery_data[f"Capacity_{unit+1}"][i] = battery_capacity
+                battery_data[f"Energy_Stored_{unit+1}"][i] = current_energy_stored
             false_count = (battery_data[f"Charge_Power_Constraints_Unit_{unit+1}"] == False).sum()
             false_count_soc = (battery_data[f"SoC_Constraints_Unit_{unit+1}"] == False).sum()
-            logging.info(f'For Unit {unit+1} there are {false_count} timestamps where the charging power exceeded either the charging or discharging power limit')
-            logging.info(f'For Unit {unit+1} there are {false_count_soc} timestamps where the SoC is invalid')
+            logging.info(f'For Unit {unit+1} there are {false_count} (out of {len(battery_data)}) timestamps where the charging power exceeded either the charging or discharging power limit')
+            logging.info(f'For Unit {unit+1} there are {false_count_soc} (out of {len(battery_data)}) timestamps where the SoC is invalid')
   
     else:
         for unit in range(num_units):

@@ -33,25 +33,12 @@ class ComponentSelection(BaseModel):
         project_name (str): The name of the project.
         project_description (str): A brief description of the project.
     """
-    # Pydantic configuration
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     # Parameters
     solar_pv: bool
     wind: bool
     generator: bool
     battery: bool
 
-class ProjectInfo(BaseModel):
-    """
-    Model representing project information.
-
-    Attributes:
-        project_name (str): The name of the project.
-        project_description (str): A brief description of the project.
-    """
-    project_name: str
-    project_description: str
 
 class GeneralInfo(BaseModel):
     """
@@ -61,9 +48,6 @@ class GeneralInfo(BaseModel):
         project_name (str): The name of the project.
         project_description (str): A brief description of the project.
     """
-    # Pydantic configuration
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     # Parameters
     start_date: datetime
     end_date: datetime
@@ -80,9 +64,6 @@ class SolarPV(BaseModel):
         project_name (str): The name of the project.
         project_description (str): A brief description of the project.
     """
-    # Pydantic configuration
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     # Parameters
     solar_pv_num_units: int
     same_date: bool
@@ -134,9 +115,6 @@ class Battery(BaseModel):
         battery_max_charge_power (list): Maximum charging power for each battery type.
         battery_inverter_efficiency (list): Inverter efficiency for each battery type.
     """
-    # Pydantic configuration
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     # Parameters
     battery_num_units: int
     battery_installation_dates: list
@@ -153,12 +131,16 @@ class Battery(BaseModel):
     battery_lifetime: list
     battery_charging_efficiency: list
     battery_discharging_efficiency: list
+    battery_roundtrip_efficiency: list
     battery_initial_soc: list
     battery_min_soc: list
     battery_max_soc: list
     battery_max_charge_power: list
     battery_max_discharge_power: list
     battery_inverter_efficiency: list
+    battery_efficiency_type: str
+    battery_inverter_eff_included: list
+    battery_temporal_degradation_rate: list
 
 class SolarIrradiation(BaseModel):
     """
@@ -168,9 +150,6 @@ class SolarIrradiation(BaseModel):
         project_name (str): The name of the project.
         project_description (str): A brief description of the project.
     """
-    # Pydantic configuration
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     # Parameters
     solar_irradiation_selected_input_type: str
     solar_irradiation_delimiter: str
@@ -187,6 +166,71 @@ class SolarIrradiation(BaseModel):
     albedo_coefficient: float
     selected_timezone_solar_irradiation: str
 
+class Wind(BaseModel):
+    wind_num_units: int
+    wind_installation_dates: list
+    wind_installation_dates_utc: list
+    wind_same_date: bool
+    selected_timezone_wind: str
+    wind_types: list
+    wind_type: list
+    wind_same_type: bool
+    wind_turbine_type: list
+    wind_lifetime: list
+    wind_rated_power: list
+    wind_efficiency: list
+    wind_diameter: list
+    wind_hub_height: list
+    wind_power_curve_uploaded: list
+    wind_temporal_degradation: bool
+    wind_temporal_degradation_rate: list
+    wind_speed_data_uploaded: bool
+    wind_selected_input_type: str
+    wind_Z1: float
+    wind_Z0: float
+
+class Generator(BaseModel):
+    """
+    Model representing generator parameters.
+
+    Attributes:
+        generator_num_units (int): Number of generator units.
+        generator_installation_dates (list): Installation dates for each generator unit.
+        generator_installation_dates_utc (list): Installation dates for each unit in UTC.
+        generator_same_date (bool): Whether all units share the same installation date.
+        selected_timezone_generator (str): Selected timezone for generator installation dates.
+        generator_types (list): List of generator types.
+        generator_type (list): Type of generator for each unit.
+        generator_same_type (bool): Whether all units share the same type.
+        generator_dynamic_efficiency (bool): Indicates dynamic efficiency for generators.
+        generator_temporal_degradation (bool): Indicates temporal degradation for generators.
+        generator_cyclic_degradation (bool): Indicates cyclic degradation for generators.
+        generator_efficiency (list): Efficiency for each generator type.
+        generator_lifetime (list): Lifetime for each generator type.
+        generator_min_power (list): Minimum power output for each generator type.
+        generator_max_power (list): Maximum power output for each generator type.
+        generator_fuel_energy (list): Fuel lower heating value (LHV) for each generator type.
+    """
+    generator_num_units: int
+    generator_installation_dates: list
+    generator_installation_dates_utc: list
+    generator_same_date: bool
+    selected_timezone_generator: str
+    generator_types: list
+    generator_type: list
+    generator_same_type: bool
+    generator_dynamic_efficiency: bool
+    generator_temporal_degradation: bool
+    generator_cyclic_degradation: bool
+    generator_efficiency: list
+    generator_lifetime: list
+    generator_min_power: list
+    generator_max_power: list
+    generator_fuel_lhv: list
+    generator_temporal_degradation_rate: list
+    generator_dynamic_efficiency_type: list
+    generator_dynamic_efficiency_uploaded: list
+    generator_efficiency_formula: list
 
 class UploadModelOutput(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -194,6 +238,12 @@ class UploadModelOutput(BaseModel):
     solar_pv_model_output_scope: str # "Per Unit", "Total"
     battery_data_uploaded: bool
     battery_model_output_scope: str # "Per Unit", "Total"
+    wind_data_uploaded: bool
+    wind_model_output_scope: str # "Per Unit", "Total"
+    generator_data_uploaded: bool
+    generator_model_output_scope: str # "Per Unit", "Total"
+    wind_data_uploaded: bool
+    wind_model_output_scope: str # "Per Unit", "Total"
 
 class GeneratePlots(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -212,10 +262,7 @@ class ProjectParameters(BaseModel):
         archetypes_params (ArchetypesParams): The archetype parameters.
         renewables_params (RenewablesParams): The renewable energy source parameters.
         grid_params (GridParams): The grid connection parameters.
-    """
-    # Pydantic configuration
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-        
+    """    
     # Parameters
     project_info: ProjectInfo
     general_info: GeneralInfo
@@ -223,6 +270,8 @@ class ProjectParameters(BaseModel):
     solar_pv_parameters: SolarPV
     solar_irradiation_parameters: SolarIrradiation
     battery_parameters: Battery
+    wind_parameters: Wind
+    generator_parameters: Generator
     upload_model_parameters: UploadModelOutput
     generate_plots: GeneratePlots
 

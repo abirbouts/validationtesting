@@ -3,7 +3,7 @@ project_info:
   project_description: "This is a default project."
 
 component_selection:
-  solar_pv: false
+  solar_pv: true
   wind: false
   generator: false
   battery: false
@@ -12,8 +12,8 @@ solar_pv_parameters:
     solar_pv_num_units: 1
     same_date: true
     selected_timezone_solar_pv: "Universal Time Coordinated - UTC"
-    installation_dates: []
-    installation_dates_utc: []
+    installation_dates: [2024-01-01 00:00:00]
+    installation_dates_utc: [2024-01-01 00:00:00]
     num_solar_pv_types: 1
     same_type: true
     solar_pv_types: ['Type 1']
@@ -53,13 +53,13 @@ solar_irradiation_parameters:
 
 battery_parameters:
     battery_num_units: 1
-    battery_installation_dates: []
-    battery_installation_dates_utc: []
+    battery_installation_dates: [2024-01-01 00:00:00]
+    battery_installation_dates_utc: [2024-01-01 00:00:00]
     battery_same_date: true
-    selected_timezone_battery: str
+    selected_timezone_battery: "Universal Time Coordinated - UTC"
     battery_same_type: true
-    battery_types: []
-    battery_type: []
+    battery_types: ['Type 1']
+    battery_type: ['Type 1']
     battery_temporal_degradation: false
     battery_cyclic_degradation: false
     battery_dynamic_inverter_efficiency: false
@@ -67,18 +67,73 @@ battery_parameters:
     battery_lifetime: [20]
     battery_charging_efficiency: [95.0]
     battery_discharging_efficiency: [95.0]
+    battery_roundtrip_efficiency: [90.0]
     battery_initial_soc: [60.0]
     battery_min_soc: [10.0]
     battery_max_soc: [100.0]
     battery_max_charge_power: [500.0]
     battery_max_discharge_power: [500.0]
     battery_inverter_efficiency: [90.0]
+    battery_efficiency_type: 'Seperate Charging and Discharging Efficiency'
+    battery_inverter_eff_included: [true]
+    battery_temporal_degradation_rate: [2.0]
+
+wind_parameters:
+    wind_num_units: 1
+    wind_installation_dates: [2024-01-01 00:00:00]
+    wind_installation_dates_utc: [2024-01-01 00:00:00]
+    wind_same_date: true
+    selected_timezone_wind: "Universal Time Coordinated - UTC"
+    wind_types: ['Type 1']
+    wind_type: ['Type 1']
+    wind_same_type: true
+    wind_turbine_type: ["Horizontal"]
+    wind_lifetime: [20]
+    wind_rated_power: [500.0]
+    wind_efficiency: [90.0]
+    wind_diameter: [1.00]
+    wind_hub_height: [1.00]
+    wind_power_curve_uploaded: [false]
+    wind_temporal_degradation: false
+    wind_temporal_degradation_rate: [1.0]
+    wind_speed_data_uploaded: false
+    wind_selected_input_type: "Complex"
+    wind_Z1: 50.0
+    wind_Z0: 10.0
+
+generator_parameters:
+    generator_num_units: 1
+    generator_installation_dates: [2024-01-01 00:00:00]
+    generator_installation_dates_utc: [2024-01-01 00:00:00]
+    generator_same_date: true
+    selected_timezone_generator: "Universal Time Coordinated - UTC"
+    generator_types: ['Type 1']
+    generator_type: ['Type 1']
+    generator_same_type: true
+    generator_dynamic_efficiency: false
+    generator_temporal_degradation: false
+    generator_cyclic_degradation: false
+    generator_efficiency: [30.0]
+    generator_lifetime: [20]
+    generator_min_power: [2.0]
+    generator_max_power: [20.0]
+    generator_fuel_lhv: [10140.0]
+    generator_temporal_degradation_rate: [1.0]
+    generator_dynamic_efficiency_type: ["Tabular Data"]
+    generator_dynamic_efficiency_uploaded: [false]
+    generator_efficiency_formula: [false]
 
 upload_model_parameters:
     solar_pv_data_uploaded: false
     solar_pv_model_output_scope: "Total"
     battery_data_uploaded: false
     battery_model_output_scope: "Total"
+    wind_data_uploaded: false
+    wind_model_output_scope: "Total"
+    generator_data_uploaded: false
+    generator_model_output_scope: "Total"
+    wind_data_uploaded: false
+    wind_model_output_scope: "Total"
 
 general_info:
   start_date: "2024-01-01 00:00:00"

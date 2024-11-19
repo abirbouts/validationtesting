@@ -1,11 +1,8 @@
 import streamlit as st
 from pathlib import Path
 from config.path_manager import PathManager
-from validationtesting.model.parameters import ProjectParameters
-
-def load_image(image_path):
-    """Load an image from the images folder."""
-    return str(PathManager.IMAGES_PATH / image_path)
+from validationtesting.validation.parameters import ProjectParameters
+from validationtesting.gui.views.utils import initialize_session_state
 
 def create_new_project(project_name):
     """Create a new project with the given name and description."""
@@ -27,6 +24,15 @@ def create_new_project(project_name):
     # Instantiate the default values and save in session state
     st.session_state.path_manager = path_manager
     st.session_state.default_values = ProjectParameters.instantiate_from_yaml(PathManager.DEFAULT_YAML_FILE_PATH)
+    initialize_session_state(st.session_state.default_values, 'general_info')
+    initialize_session_state(st.session_state.default_values, 'component_selection')
+    initialize_session_state(st.session_state.default_values, 'upload_model_parameters')
+    initialize_session_state(st.session_state.default_values, 'solar_pv_parameters')
+    initialize_session_state(st.session_state.default_values, 'solar_irradiation_parameters')
+    initialize_session_state(st.session_state.default_values, 'battery_parameters')
+    initialize_session_state(st.session_state.default_values, 'wind_parameters')
+    initialize_session_state(st.session_state.default_values, 'generator_parameters')
+    initialize_session_state(st.session_state.default_values, 'generate_plots')
     
     # Create a YAML file for the project with default values
     yaml_file_path = project_folder / f"{project_name}.yaml"
@@ -57,7 +63,17 @@ def load_existing_project(uploaded_file):
         st.session_state.project_name = project_name
         st.session_state.path_manager = path_manager
         st.session_state.default_values = ProjectParameters.instantiate_from_yaml(yaml_file_path)
+        initialize_session_state(st.session_state.default_values, 'general_info')
+        initialize_session_state(st.session_state.default_values, 'component_selection')
+        initialize_session_state(st.session_state.default_values, 'upload_model_parameters')
+        initialize_session_state(st.session_state.default_values, 'solar_pv_parameters')
+        initialize_session_state(st.session_state.default_values, 'solar_irradiation_parameters')
+        initialize_session_state(st.session_state.default_values, 'battery_parameters')
+        initialize_session_state(st.session_state.default_values, 'wind_parameters')
+        initialize_session_state(st.session_state.default_values, 'generator_parameters')
+        initialize_session_state(st.session_state.default_values, 'generate_plots')
         return True
+    
     except Exception as e:
         st.error(f"Failed to load configuration: {e}")
         return False
@@ -74,11 +90,8 @@ def initial_page():
         # Button to create a new project or select another one
         if st.button("Create or Select Another Project"):
             # Reset project selection and go back to initial state
-            #st.session_state.project_name = None
-            #st.session_state.new_project_completed = False
             for key in st.session_state.keys():
                 del st.session_state[key]
-            #st.experimental_rerun()
 
     else:
         # No project selected, show the create new project section
@@ -98,7 +111,7 @@ def initial_page():
                     st.session_state.project_name = project_name
                     st.session_state.page = "General"
                     st.session_state.new_project_completed = True
-                    #st.experimental_rerun()  # Force rerun to navigate to the "General" page
+                    st.session_state.initialized = True
             else:
                 st.error("Project name cannot be empty. Please enter a valid project name.")
         
@@ -111,6 +124,6 @@ def initial_page():
         if uploaded_file is not None:
             if load_existing_project(uploaded_file):
                 st.success(f"Project '{st.session_state.project_name}' loaded successfully!")
-                st.session_state.page = "Project Settings"
+                st.session_state.page = "General"
                 st.session_state.new_project_completed = True
-                #st.experimental_rerun()  # Force rerun to navigate to the "Project Settings" page
+                st.session_state.initialized = True

@@ -4,7 +4,7 @@ from math import radians as rad, sin, cos, acos, degrees
 import datetime
 import logging
 from config.path_manager import PathManager
-import validationtesting.model.get_solar_irradiance as get_solar_irradiance 
+import validationtesting.validation.get_solar_irradiance as get_solar_irradiance 
 
 
 def get_solar_pv_power(PV_area, G_total, T_ambient, efficiency, dynamic_efficiency, temperature_coefficient, T_ref, NOCT, T_ref_NOCT, ref_irradiance_NOCT, degradation, degradation_rate, date, installation_date, lifetime):
@@ -85,6 +85,16 @@ def solar_pv_benchmark():
     project_name = st.session_state.get("project_name")
     irradiation_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / "solar_irradiation.csv"
     irradiation_data = pd.read_csv(irradiation_data_path)
+    
+    if irradiation_data['UTC Time'].str.match(r'^\d{2}-\d{2} \d{2}:\d{2}$').any():
+        irradiation_data_columns = irradiation_data.columns.tolist()
+        model_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"model_output_solar_pv.csv"
+        solar_model_data = pd.read_csv(model_data_path)
+        irradiation_data.rename(columns={'UTC Time': 'UTC Time without year'}, inplace=True)
+        solar_model_data['UTC Time without year'] = solar_model_data['UTC Time'].apply(lambda x: datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S').strftime('%m-%d %H:%M'))
+        irradiation_data['UTC Time without year'] = irradiation_data['UTC Time without year'].apply(lambda x: datetime.datetime.strptime(x, '%m-%d %H:%M').strftime('%m-%d %H:%M'))
+        merged_data = pd.merge(solar_model_data, irradiation_data, on='UTC Time without year', how='left')
+        irradiation_data = merged_data[irradiation_data_columns]
 
     if st.session_state.Input_G_total:
         for type in solar_pv_types:
@@ -127,25 +137,7 @@ def solar_pv_benchmark():
             else:
                 Temperature = None
             irradiation_data[f'Benchmark solar_pv Power Unit {unit+1}'][i] = get_solar_pv_power(pv_area[type_int-1], irradiation_data[f'Benchmark_G_Total_{type}'][i], Temperature, pv_efficiency[type_int-1], pv_temperature_dependent_efficiency, pv_temperature_coefficient[type_int-1], pv_T_ref[type_int-1], pv_NOCT[type_int-1], pv_T_ref_NOCT[type_int-1], pv_I_ref_NOCT[type_int-1], pv_degradation, pv_degradation_rate[type_int-1], date, installation_dates[unit], pv_lifetime[type_int-1])
-            logging.info(f"pv_area: {pv_area[type_int-1]}")
-            logging.info(f"irradiation_data: {irradiation_data[f'Benchmark_G_Total_{type}'][i]}")
-            logging.info(f"Temperature: {Temperature}")
-            logging.info(f"pv_efficiency: {pv_efficiency[type_int-1]}")
-            logging.info(f"pv_temperature_dependent_efficiency: {pv_temperature_dependent_efficiency}")
-            logging.info(f"pv_temperature_coefficient: {pv_temperature_coefficient[type_int-1]}")
-            logging.info(f"pv_T_ref: {pv_T_ref[type_int-1]}")
-            logging.info(f"pv_NOCT: {pv_NOCT[type_int-1]}")
-            logging.info(f"pv_T_ref_NOCT: {pv_T_ref_NOCT[type_int-1]}")
-            logging.info(f"pv_I_ref_NOCT: {pv_I_ref_NOCT[type_int-1]}")
-            logging.info(f"pv_degradation: {pv_degradation}")
-            logging.info(f"pv_degradation_rate: {pv_degradation_rate[type_int-1]}")
-            logging.info(f"date: {date}")
-            logging.info(f"installation_dates: {installation_dates[unit]}")
-            logging.info(f"pv_lifetime: {pv_lifetime[type_int-1]}")
-            logging.info(irradiation_data[f'Benchmark solar_pv Power Unit {unit+1}'][i])
-            logging.info('-----------------------------------------')
             irradiation_data[f'Benchmark solar_pv Power Total'][i] += irradiation_data[f'Benchmark solar_pv Power Unit {unit+1}'][i]
     results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "solar_pv_benchmark.csv"
-    #logging.info(irradiation_data)
     irradiation_data.to_csv(results_data_path)
     logging.info(f"Solar PV Benchmark saved in {results_data_path}")

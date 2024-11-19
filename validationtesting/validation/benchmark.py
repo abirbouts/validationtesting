@@ -5,7 +5,8 @@ from validationtesting.gui.views.utils import initialize_session_state
 import datetime as dt
 import logging
 
-from validationtesting.model.solar_pv import solar_pv_benchmark
+from validationtesting.validation.solar_benchmarking import solar_pv_benchmark
+from validationtesting.validation.wind_benchmarking import wind_benchmark
 
 class Benchmark():
     def __init__(self):
@@ -13,10 +14,8 @@ class Benchmark():
         self.logger.info("Starting Benchmark calculation...")
         self.project_name = st.session_state.get("project_name")
         components = {
-            "solar_pv": solar_pv_benchmark#,
-            #wind: wind_benchmark,
-            #generator: generator_benchmark,
-            #battery: battery_benchmark
+            "solar_pv": solar_pv_benchmark,
+            "wind": wind_benchmark
         }
 
         combined_df = None

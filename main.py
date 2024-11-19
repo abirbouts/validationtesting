@@ -16,8 +16,11 @@ from validationtesting.gui.views.general_page import general
 from validationtesting.gui.views.component_selection_page import component_selection
 from validationtesting.gui.views.upload_model_output_page import upload_model_output
 from validationtesting.gui.views.solar_pv_page import solar_pv
-from validationtesting.gui.views.solar_irradiation import solar_irradiation
+from validationtesting.gui.views.solar_data_page import irradiation_data
 from validationtesting.gui.views.battery_page import battery
+from validationtesting.gui.views.wind_page import wind
+from validationtesting.gui.views.wind_data_page import wind_data
+from validationtesting.gui.views.generator_page import generator
 from validationtesting.gui.views.run_page import run_model
 from validationtesting.gui.views.plots_page import generate_plots
 from validationtesting.gui.views.utils import initialize_session_state
@@ -35,45 +38,6 @@ st.set_page_config(
         )
     }
 )
-
-def datetime_to_str(obj):
-    if isinstance(obj, datetime):
-        return obj.isoformat()
-    return obj
-
-
-def update_nested_settings(settings):
-    for field in settings.model_fields:
-        if hasattr(settings, field):
-            value = getattr(settings, field)
-            if isinstance(value, (int, float, str, bool)):
-                if field in st.session_state:
-                    setattr(settings, field, st.session_state[field])
-            elif isinstance(value, datetime):
-                if field in st.session_state:
-                    setattr(settings, field, datetime_to_str(st.session_state[field]))
-            elif isinstance(value, list):
-                if field in st.session_state:
-                    new_value = st.session_state[field]
-                    if isinstance(new_value, list):
-                        setattr(settings, field, new_value)
-                    else:
-                        setattr(settings, field, [new_value])  # Convert single value to list
-            elif isinstance(value, dict):
-                if field in st.session_state:
-                    new_value = st.session_state[field]
-                    if isinstance(new_value, dict):
-                        current_dict = getattr(settings, field)
-                        current_dict.update(new_value)
-                        setattr(settings, field, current_dict)
-            elif hasattr(value, 'model_fields'):
-                if field == 'renewables_params':
-                    setattr(settings, field, update_renewable_params(value, settings.resource_assessment.res_sources))
-                elif field == 'generator_params':
-                    setattr(settings, field, update_generator_params(value, settings.generator_params.gen_types))
-                else:
-                    setattr(settings, field, update_nested_settings(value))
-    return settings
 
 def save_settings_to_yaml(session_state, project_name, path_manager):
     """
@@ -96,7 +60,6 @@ def save_settings_to_yaml(session_state, project_name, path_manager):
 
     st.toast(f"Settings saved successfully to {yaml_filepath}")
     """
-    st.session_state.solar_pv_model_output_scope = "Total"
     save_to_yaml()
 
 
@@ -108,7 +71,6 @@ def main() -> None:
     in the sidebar and the main content area. It manages the session state to keep track of 
     the current page being viewed and displays the appropriate page based on user interactions.
     """
-
     # Ensure that 'new_project_completed' flag and 'project_name' are in session state
     if 'new_project_completed' not in st.session_state:
         st.session_state.new_project_completed = False
@@ -131,14 +93,18 @@ def main() -> None:
     # Navigation buttons
     if st.sidebar.button("Initial Page", disabled=not buttons_enabled):
         st.session_state.page = "Initial Page"
+        st.rerun()
     if st.sidebar.button("General", disabled=not buttons_enabled):
         st.session_state.page = "General"
+        st.rerun()
     if st.sidebar.button("Component Selection", disabled=not buttons_enabled):
         st.session_state.page = "Component Selection"
+        st.rerun()
     
     # Set default page to "Initial Page" if no page is set in session state
     if 'page' not in st.session_state:
         st.session_state.page = "Initial Page"
+        st.rerun()
 
     # Dictionary to store frame references (views)
     pages = {
@@ -146,10 +112,15 @@ def main() -> None:
         "General": general,
         "Component Selection": component_selection,
         "Solar PV": solar_pv,
-        "Solar Irradiation": solar_irradiation,
+        "Irradiation Data": irradiation_data,
         "Upload Solar Model Output": lambda: upload_model_output('solar_pv'),
         "Battery": battery,
         "Upload Battery Model Output": lambda: upload_model_output('battery'),
+        "Wind": wind,
+        "Wind Data": wind_data,
+        "Upload Wind Model Output": lambda: upload_model_output('wind'),
+        "Generator": generator,
+        "Upload Generator Model Output": lambda: upload_model_output('generator'),
         "Run Page": run_model,
         "Plots Page": generate_plots
     }
@@ -157,54 +128,61 @@ def main() -> None:
     # Display the selected frame
     pages[st.session_state.page]()
 
-    # Set up expanders for each component (Solar PV, Wind, etc.)
-    if "solar_pv" not in st.session_state:
-        st.session_state.solar_pv = False
+    if st.session_state.page != "Initial Page": 
+        if st.session_state.solar_pv:
+            with st.sidebar.expander("Solar PV", expanded=False):
+                if st.button("Solar PV Specifications"):
+                    st.session_state.page = "Solar PV"
+                    st.rerun()
+                if st.button("Upload Irradiation Data"):
+                    st.session_state.page = "Irradiation Data"
+                    st.rerun()
+                if st.button("Upload Solar PV Model Output"):
+                    st.session_state.page = "Upload Solar Model Output"
+                    st.rerun()
+        if st.session_state.wind:
+            with st.sidebar.expander("Wind Energy", expanded=False):
+                if st.button("Wind Specifications"):
+                    st.session_state.page = "Wind"
+                    st.rerun()
+                if st.button("Upload Wind Data"):
+                    st.session_state.page = "Wind Data"
+                    st.rerun()
+                if st.button("Upload Wind Model Output"):
+                    st.session_state.page = "Upload Wind Model Output" 
+                    st.rerun()
+        if st.session_state.generator:
+            with st.sidebar.expander("Generator", expanded=False):
+                if st.button("Generator Specifications"):
+                    st.session_state.page = "Generator"
+                    st.rerun()
+                if st.button("Upload Generator Model Output"):
+                    st.session_state.page = "Upload Generator Model Output" 
+                    st.rerun()
 
-    if "wind" not in st.session_state:
-        st.session_state.wind = False
-
-    if "generator" not in st.session_state:
-        st.session_state.generator = False
-
-    if "battery" not in st.session_state:
-        st.session_state.battery = False
-
-    if st.session_state.solar_pv:
-        with st.sidebar.expander("Solar PV", expanded=False):
-            if st.button("Solar PV Specifications"):
-                st.session_state.page = "Solar PV"
-            if st.button("Solar Irradiation"):
-                st.session_state.page = "Solar Irradiation"
-            if st.button("Upload Solar PV Model Output"):
-                st.session_state.page = "Upload Solar Model Output"
-    if st.session_state.wind:
-        with st.sidebar.expander("Wind Energy", expanded=False):
-            if st.sidebar.button("Wind Energy"):
-                st.session_state.page = "Wind"
-    if st.session_state.generator:
-        with st.sidebar.expander("Generator", expanded=False):
-            if st.sidebar.button("Generator"):
-                st.session_state.page = "Generator"
-    if st.session_state.battery:
-        with st.sidebar.expander("Battery", expanded=False):
-            if st.button("Battery Specifications"):
-                st.session_state.page = "Battery"
-            if st.button("Upload Battery Model Output"):
-                st.session_state.page = "Upload Battery Model Output"
+        if st.session_state.battery:
+            with st.sidebar.expander("Battery", expanded=False):
+                if st.button("Battery Specifications"):
+                    st.session_state.page = "Battery"
+                    #st.rerun()
+                if st.button("Upload Battery Model Output"):
+                    st.session_state.page = "Upload Battery Model Output"
+                    st.rerun()
             
     if st.sidebar.button("Run Page", disabled=not buttons_enabled):
         st.session_state.page = "Run Page"
+        st.rerun()
 
     if st.sidebar.button("Plots Page", disabled=not buttons_enabled):
         st.session_state.page = "Plots Page"
+        st.rerun()
 
     if st.sidebar.button("Save Settings to YAML"):
         if st.session_state.project_name:
             path_manager: PathManager = PathManager(st.session_state.project_name)
             save_settings_to_yaml(st.session_state, st.session_state.project_name, path_manager)
-
-    save_to_yaml()
+    if st.session_state.page != "Initial Page":
+        save_to_yaml()
 
     # Render the footer and icons
     render_footer()

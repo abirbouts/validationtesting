@@ -42,7 +42,7 @@ def plot_mae(component):
         for i in range(len(merged_data)):
             plt.text(merged_data[scope][i], 
                      merged_data['Mean Benchmark Total'][i] + merged_data['MAE Total'][i], 
-                     f'{merged_data["MAE Total"][i]:.1f}%', 
+                     f'{merged_data["MAE Total"][i]:.1f}', 
                      ha='center', va='bottom', fontsize=8)
         plt.xticks(rotation=80)
         plt.legend()
@@ -57,6 +57,9 @@ def plot_mae(component):
 
 def solar_pv_generate_plots():
     plot_mae("solar_pv")
+
+def wind_generate_plots():
+    plot_mae("wind")
 
 
 
@@ -85,8 +88,7 @@ def generate_plots():
             if component == "Solar PV":
                 function_name = f"solar_pv_generate_plots"
             else:
-                pass
-                #function_name = f"{component.lower()}_generate_plots"
+                function_name = f"{component.lower()}_generate_plots"
             print(f'st.session_state.default_values={st.session_state.default_values}')
             plot_function = getattr(sys.modules[__name__], function_name, None)
             plot_function()
@@ -101,4 +103,10 @@ def generate_plots():
         st.write("Mean Benchmark Output with MAE")
         granularity = st.selectbox("Select Granularity", ["Yearly", "Monthly", "Hourly"])
         plot_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "plots" / f"solar_pv_mae_{granularity.lower()}.png"
+        st.image(str(plot_path), caption=f"{granularity} Mean Benchmark Output with MAE", use_column_width=True)
+
+    if plots_component == "Wind":
+        st.write("Mean Benchmark Output with MAE")
+        granularity = st.selectbox("Select Granularity", ["Yearly", "Monthly", "Hourly"])
+        plot_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "plots" / f"wind_mae_{granularity.lower()}.png"
         st.image(str(plot_path), caption=f"{granularity} Mean Benchmark Output with MAE", use_column_width=True)

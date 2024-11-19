@@ -4,13 +4,8 @@ from config.path_manager import PathManager
 from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface
 import datetime as dt
 import pytz
+import requests
 
-def ensure_list_length(key: str, length: int) -> None:
-    """Ensure the list in session state has the required length."""
-    if key not in st.session_state:
-        st.session_state[key] = [0.0] * length
-    else:
-        st.session_state[key].extend([0.0] * (length - len(st.session_state[key])))
 
 def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str):
     """
@@ -141,76 +136,39 @@ def render_time_format_timezone_selectors():
 
     return time_format, selected_timezone
 
+def download_pvgis_pv_data(lat, lon):
+    URL = 'https://re.jrc.ec.europa.eu/api/tmy?lat=' + str(lat) + '&lon=' + str(lon) + '&outputformat=json'
+
+    # Make the request
+    response = requests.get(URL)
+
+    # Check the response status
+    if response.status_code == 200:
+        jsdata = response.json()  # Parse and return JSON data
+    else:
+        error_message = response.text  # Get the error message from the response
+        st.error(f'Error while downloading from PVGIS. Error message: {error_message}')
+        return None
     
+    tmy_hourly_data = jsdata["outputs"]["tmy_hourly"]
+    tmy_df = pd.DataFrame(tmy_hourly_data)
+
+    # Rename columns
+    tmy_df.rename(columns={'time(UTC)': 'UTC Time', 'T2m': 'Temperature', 'G(h)': 'GHI', 'Gd(h)': 'DHI'}, inplace=True)
+    tmy_df = tmy_df[['UTC Time', 'Temperature', 'GHI', 'DHI']]
+
+    # Convert 'UTC Time' column to 'MM-DD HH:MM' format
+    tmy_df['UTC Time'] = pd.to_datetime(tmy_df['UTC Time'], format='%Y%m%d:%H%M')
+    tmy_df['UTC Time'] = tmy_df['UTC Time'].dt.strftime('%m-%d %H:%M')
+
+    return tmy_df
+
+
 def save_solar_irradiation_data(resource_data: pd.DataFrame, project_name: str) -> None:
     project_folder_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / "solar_irradiation.csv"
-    resource_data.to_csv(project_folder_path, index=True)
-    st.success(f"Resource data saved successfully at {project_folder_path}")
+    resource_data.to_csv(project_folder_path, index=False)
 
-
-def update_parameters(i: int, res_name: str, time_horizon: int, brownfield: bool, land_availability: float, currency: str) -> None:
-    """Update renewable parameters for the given index."""
-    st.subheader(f"{res_name} Parameters")
-    
-    st.session_state.res_inverter_efficiency[i] = st.number_input(
-        f"Inverter Efficiency [%]", 
-        min_value=0.0, 
-        max_value=100.0, 
-        value=float(st.session_state.res_inverter_efficiency[i] * 100), 
-        key=f"inv_eff_{i}") / 100
-    
-    if land_availability > 0:
-        st.session_state.res_specific_area[i] = st.number_input(
-            f"Specific Area [m2/kW]",
-            min_value=0.0, 
-            value=float(st.session_state.res_specific_area[i]), 
-            key=f"spec_area_{i}")
-    
-    st.session_state.res_specific_investment_cost[i] = st.number_input(
-        f"Specific Investment Cost [{currency}/W]", 
-        min_value=0.0,
-        value=float(st.session_state.res_specific_investment_cost[i]), 
-        key=f"inv_cost_{i}")
-    
-    st.session_state.res_specific_om_cost[i] = st.number_input(
-        f"Specific O&M Cost as % of investment cost [%]", 
-        min_value=0.0, 
-        max_value=100.0,
-        value=float(st.session_state.res_specific_om_cost[i] * 100), 
-        key=f"om_cost_{i}") / 100
-    
-    if brownfield:
-        st.session_state.res_lifetime[i] = st.number_input(
-            f"Lifetime [years]", 
-            value=float(st.session_state.res_lifetime[i]), 
-            key=f"lifetime_{i}")
-    else:
-        st.session_state.res_lifetime[i] = st.number_input(
-            f"Lifetime [years]", 
-            min_value=float(time_horizon), 
-            value=max(float(time_horizon), float(st.session_state.res_lifetime[i])), 
-            key=f"lifetime_{i}")
-    
-    st.session_state.res_unit_co2_emission[i] = st.number_input(
-        f"Unit CO2 Emission [kgCO2/W]", 
-        value=float(st.session_state.res_unit_co2_emission[i]), 
-        key=f"co2_{i}")
-
-    if brownfield:
-        st.write("##### Brownfield project parameters:")
-        st.session_state.res_existing_capacity[i] = st.number_input(
-            f"Existing Capacity [kW]", 
-            min_value=0.0,
-            value=float(st.session_state.res_existing_capacity[i]) * 1000, 
-            key=f"exist_cap_{i}") / 1000
-        st.session_state.res_existing_years[i] = st.number_input(
-            f"Existing Years [years]", 
-            min_value=0,
-            max_value=(st.session_state.res_lifetime[i] - 1),
-            value=float(st.session_state.res_existing_years[i]), 
-            key=f"exist_years_{i}")
-
-def solar_irradiation() -> None:
+def irradiation_data() -> None:
     """Streamlit page for configuring renewable energy technology parameters."""
     st.title("Solar Irradiation")
     st.subheader("Upload the model's solar PV output")
@@ -220,7 +178,7 @@ def solar_irradiation() -> None:
     project_name = st.session_state.get("project_name")
 
     if st.session_state.irradiation_data_uploaded == True:
-        st.write("Data has already been uploaded:")
+        st.write("Data has been uploaded:")
         project_folder_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / "solar_irradiation.csv"
         irradiation_data = pd.read_csv(project_folder_path)
         st.dataframe(irradiation_data.head(10))
@@ -231,9 +189,9 @@ def solar_irradiation() -> None:
         # Dropdown menu to choose between uploading data or downloading from NASA
         data_source = st.selectbox(
             "Select Data Source",
-            ("Upload your own data", "Download from NASA")
+            ("Upload your own data", "Download from PVGIS")
         )
-
+        '''
         # Set up input types based on session state
         if "Input_G_total" not in st.session_state:
             st.session_state.Input_G_total = False
@@ -245,7 +203,7 @@ def solar_irradiation() -> None:
             st.session_state.Input_DNI = False
         if "data_uploaded" not in st.session_state:
             st.session_state.data_uploaded = False  # New flag to track upload status
-
+        '''
         if data_source == "Upload your own data":
             # Dropdown for selecting the input type
             st.session_state.selected_input_type = st.selectbox(
@@ -283,48 +241,63 @@ def solar_irradiation() -> None:
                 st.session_state.Input_DNI = False
                 st.session_state.Input_G_total = True
 
-        elif data_source == "Download from NASA":
-            # Placeholder or code for NASA data download
-            st.write("Downloading data from NASA...")
+            uploaded_file, delimiter, decimal = csv_upload_interface(f"solar")
+            if uploaded_file:
+                with st.expander(f"Time", expanded=False):
+                    time_format, timezone = render_time_format_timezone_selectors()
+                    time_data = load_timeseries_csv_with_timezone(uploaded_file, delimiter, decimal, time_format, timezone)
+                with st.expander(f"Data", expanded=False):
+                    data_dict = {}
+                    if st.session_state.pv_temperature_dependent_efficiency:         
+                        temperature_data = load_csv_data(uploaded_file, delimiter, decimal, 'Temperature')
+                        data_dict['Temperature'] = temperature_data.values.flatten() if temperature_data is not None else None
+                    if st.session_state.Input_GHI:
+                        GHI_data = load_csv_data(uploaded_file, delimiter, decimal, 'GHI')
+                        data_dict['GHI'] = GHI_data.values.flatten() if GHI_data is not None else None
+                    if st.session_state.Input_DHI:
+                        DHI_data = load_csv_data(uploaded_file, delimiter, decimal, 'DHI')
+                        data_dict['DHI'] = DHI_data.values.flatten() if DHI_data is not None else None
+                    if st.session_state.Input_DNI:
+                        DNI_data = load_csv_data(uploaded_file, delimiter, decimal, 'DNI')
+                        data_dict['DNI'] = DNI_data.values.flatten() if DNI_data is not None else None
+                    if st.session_state.Input_G_total:
+                        solar_pv_types = st.session_state.get("solar_pv_types")
+                        for type in solar_pv_types:
+                            G_total_data = load_csv_data(uploaded_file, delimiter, decimal, f'Total Irradiance {type}')
+                            data_dict[f'G_Total_{type}'] = G_total_data.values.flatten() if G_total_data is not None else None
+                if time_data is not None and all(value is not None for value in data_dict.values()):
+                    # Combine all data into a single DataFrame (for all elements)
+                    irradiation_data = pd.DataFrame({
+                        'UTC Time': time_data.values,
+                        **data_dict  # Dynamically unpack the dictionary
+                    })
 
-        uploaded_file, delimiter, decimal = csv_upload_interface(f"solar")
-        if uploaded_file:
-            with st.expander(f"Time", expanded=False):
-                time_format, timezone = render_time_format_timezone_selectors()
-                time_data = load_timeseries_csv_with_timezone(uploaded_file, delimiter, decimal, time_format, timezone)
-            with st.expander(f"Data", expanded=False):
-                data_dict = {}
-                if st.session_state.pv_temperature_dependent_efficiency:         
-                    temperature_data = load_csv_data(uploaded_file, delimiter, decimal, 'Temperature')
-                    data_dict['Temperature'] = temperature_data.values.flatten() if temperature_data is not None else None
-                if st.session_state.Input_GHI:
-                    GHI_data = load_csv_data(uploaded_file, delimiter, decimal, 'GHI')
-                    data_dict['GHI'] = GHI_data.values.flatten() if GHI_data is not None else None
-                if st.session_state.Input_DHI:
-                    DHI_data = load_csv_data(uploaded_file, delimiter, decimal, 'DHI')
-                    data_dict['DHI'] = DHI_data.values.flatten() if DHI_data is not None else None
-                if st.session_state.Input_DNI:
-                    DNI_data = load_csv_data(uploaded_file, delimiter, decimal, 'DNI')
-                    data_dict['DNI'] = DNI_data.values.flatten() if DNI_data is not None else None
-                if st.session_state.Input_G_total:
-                    solar_pv_types = st.session_state.get("solar_pv_types")
-                    for type in solar_pv_types:
-                        G_total_data = load_csv_data(uploaded_file, delimiter, decimal, f'Total Irradiance {type}')
-                        data_dict[f'G_Total_{type}'] = G_total_data.values.flatten() if G_total_data is not None else None
-            if time_data is not None and all(value is not None for value in data_dict.values()):
-                # Combine all data into a single DataFrame (for all elements)
-                irradiation_data = pd.DataFrame({
-                    'UTC Time': time_data.values,
-                    **data_dict  # Dynamically unpack the dictionary
-                })
+                    # Display the shape of the full DataFrame
+                    st.write(f'Shape of Dataframe: {irradiation_data.shape}')
 
-                # Display the shape of the full DataFrame
-                st.write(f'Shape of Dataframe: {irradiation_data.shape}')
+                    # Display only the first 10 rows of the DataFrame in the UI
+                    st.dataframe(irradiation_data.head(10))
 
-                # Display only the first 10 rows of the DataFrame in the UI
-                st.dataframe(irradiation_data.head(10))
+                    # Button to save the full DataFrame
+                    if st.button(f"Save Data for", key=f"save_solar_csv"):
+                        save_solar_irradiation_data(irradiation_data, project_name)
+                        st.session_state.irradiation_data_uploaded = True  # Set the flag to True since data is now uploaded
+                        st.rerun()
 
-                # Button to save the full DataFrame
-                if st.button(f"Save Data for", key=f"save_solar_csv"):
+        elif data_source == "Download from PVGIS":
+            if st.button(f"Download Solar Data from PVGIS", key=f"download_solar_data"):
+                with st.spinner('Downloading data from PVGIS...'):
+
+                    st.session_state.Input_GHI = True
+                    st.session_state.Input_DHI = True
+                    st.session_state.Input_DNI = False
+                    st.session_state.Input_G_total = False
+
+                    irradiation_data = download_pvgis_pv_data( 
+                        lat=st.session_state.lat, 
+                        lon=st.session_state.lon
+                    )
+
                     save_solar_irradiation_data(irradiation_data, project_name)
                     st.session_state.irradiation_data_uploaded = True  # Set the flag to True since data is now uploaded
+                    st.rerun()

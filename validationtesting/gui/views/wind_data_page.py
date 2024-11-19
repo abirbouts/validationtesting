@@ -4,7 +4,7 @@ from config.path_manager import PathManager
 from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface
 import datetime as dt
 import pytz
-import numpy as np
+import requests
 
 
 def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str):
@@ -136,93 +136,132 @@ def render_time_format_timezone_selectors():
 
     return time_format, selected_timezone
 
+def download_pvgis_wind_data(lat, lon):
+    URL = 'https://re.jrc.ec.europa.eu/api/tmy?lat=' + str(lat) + '&lon=' + str(lon) + '&outputformat=json'
+
+    # Make the request
+    response = requests.get(URL)
+
+    # Check the response status
+    if response.status_code == 200:
+        jsdata = response.json()  # Parse and return JSON data
+    else:
+        error_message = response.text  # Get the error message from the response
+        st.error(f'Error while downloading from PVGIS. Error message: {error_message}')
+        return None
     
-def save_data(resource_data: pd.DataFrame, project_name: str, resource_name: str) -> None:
-    """Save the resource data to a CSV file."""    
-    project_folder_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"model_output_{resource_name}.csv"
+    tmy_hourly_data = jsdata["outputs"]["tmy_hourly"]
+    tmy_df = pd.DataFrame(tmy_hourly_data)
+    st.write(tmy_df)
+    # Rename columns
+    tmy_df.rename(columns={'time(UTC)': 'UTC Time', 'WS10m': 'Wind Speed'}, inplace=True)
+    tmy_df = tmy_df[['UTC Time', 'Wind Speed']]
+
+    # Convert 'UTC Time' column to 'MM-DD HH:MM' format
+    tmy_df['UTC Time'] = pd.to_datetime(tmy_df['UTC Time'], format='%Y%m%d:%H%M')
+    tmy_df['UTC Time'] = tmy_df['UTC Time'].dt.strftime('%m-%d %H:%M')
+
+    return tmy_df
+    
+def save_wind_data(resource_data: pd.DataFrame, project_name: str) -> None:
+    project_folder_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / "wind_data.csv"
     resource_data.to_csv(project_folder_path, index=False)
 
-
-def upload_model_output(resource) -> None:
+def wind_data() -> None:
     """Streamlit page for configuring renewable energy technology parameters."""
-    st.title(f"Upload the model's {resource} output")
+    st.title("Upload Wind Data")
 
     # Initialize session state variables
-    initialize_session_state(st.session_state.default_values, 'upload_model_parameters')
+    initialize_session_state(st.session_state.default_values, 'wind_parameters')
     project_name = st.session_state.get("project_name")
-    if st.session_state[f'{resource}_data_uploaded']:
-        st.write("Data has already been uploaded:")
-        project_folder_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"model_output_{resource}.csv"
-        data = pd.read_csv(project_folder_path)
-        st.dataframe(data.head(10))
+
+    if st.session_state.wind_speed_data_uploaded == True:
+        st.write("Data has been uploaded:")
+        project_folder_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / "wind_data.csv"
+        wind_data = pd.read_csv(project_folder_path)
+        st.dataframe(wind_data.head(10))
         if st.button("Reupload Data"):
-            st.session_state[f'{resource}_data_uploaded'] = False
+            st.session_state.wind_speed_data_uploaded = False
 
     else:
+        # Dropdown menu to choose between uploading data or downloading from NASA
+        data_source = st.selectbox(
+            "Select Data Source",
+            ("Upload your own data", "Download from PVGIS")
+        )
 
-        st.session_state[f'{resource}_model_output_scope'] = st.radio(f"Is the {resource} output defined per unit or in total?", ("Per Unit", "Total"))
+        if data_source == "Upload your own data":
+            # Dropdown for selecting the input type
+            st.session_state.wind_selected_input_type = st.selectbox(
+                "Chooses ",
+                [
+                    "Simple", 
+                    "Complex"
+                ]
+            )
 
-        uploaded_file, delimiter, decimal = csv_upload_interface(f"power_production_{resource}")
-        if uploaded_file:
-            with st.expander(f"Time", expanded=False):
-                time_format, timezone = render_time_format_timezone_selectors()
-                time_data = load_timeseries_csv_with_timezone(uploaded_file, delimiter, decimal, time_format, timezone)
-            with st.expander(f"Data", expanded=False):
-                data_dict = {}
-                if st.session_state[f'{resource}_model_output_scope'] == "Total":         
-                    power_output_data = load_csv_data(uploaded_file, delimiter, decimal, f'Model {resource} Power Total')
-                    data_dict[f'Model {resource} Power Total'] = power_output_data.values.flatten() if power_output_data is not None else None
-                    if resource == "generator":
-                        fuel_consumption_data = load_csv_data(uploaded_file, delimiter, decimal, 'Model Fuel Consumption Total')
-                        data_dict['Model Fuel Consumption Total'] = fuel_consumption_data.values.flatten() if fuel_consumption_data is not None else None
 
-                elif st.session_state[f'{resource}_model_output_scope'] == "Per Unit":
-                    total_power_output = None
-                    total_fuel_consumption = None
-                    for unit in range(st.session_state[f'{resource}_num_units']):
-                        power_output_data = load_csv_data(uploaded_file, delimiter, decimal, f'Model {resource} Power Unit {unit + 1}')
-                        if power_output_data is not None:
-                            power_output_flattened = power_output_data.values.flatten()
-                            data_dict[f'Model {resource} Power Unit {unit + 1}'] = power_output_flattened
-                            # Sum element-wise using NumPy
-                            if total_power_output is None:
-                                total_power_output = power_output_flattened
-                            else:
-                                total_power_output = np.add(total_power_output, power_output_flattened)
+            uploaded_file, delimiter, decimal = csv_upload_interface(f"solar")
+            if uploaded_file:
+                with st.expander(f"Time", expanded=False):
+                    time_format, timezone = render_time_format_timezone_selectors()
+                    time_data = load_timeseries_csv_with_timezone(uploaded_file, delimiter, decimal, time_format, timezone)
+                with st.expander(f"Data", expanded=False):
+                    data_dict = {}
+                    if st.session_state.wind_selected_input_type == "Simple":         
+                        wind_data = load_csv_data(uploaded_file, delimiter, decimal, 'Wind Speed')
+                        data_dict['Wind Speed'] = wind_data.values.flatten() if wind_data is not None else None
+                    if st.session_state.wind_selected_input_type == "Complex": 
+                        st.number_input(
+                            "Height 1:", 
+                            min_value=0.0, 
+                            value=st.session_state.wind_Z1,  # This displays the value from `st.session_state`
+                            key="wind_Z1"  # This associates the widget with `st.session_state.wind_Z1`
+                        )
 
-                        if resource == "generator":
-                            fuel_consumption_data = load_csv_data(uploaded_file, delimiter, decimal, f'Model Fuel Consumption Unit {unit + 1}')
-                            if fuel_consumption_data is not None:
-                                fuel_consumption_flattened = fuel_consumption_data.values.flatten()
-                                data_dict[f'Model Fuel Consumption Unit {unit + 1}'] = fuel_consumption_flattened
-                                # Sum element-wise using NumPy
-                                if total_fuel_consumption is None:
-                                    total_fuel_consumption = fuel_consumption_flattened
-                                else:
-                                    total_fuel_consumption = np.add(total_fuel_consumption, fuel_consumption_flattened)
+                        # Use the value directly from `st.session_state.wind_Z1`
+                        windz1_data = load_csv_data(uploaded_file, delimiter, decimal, f'Wind Speed {st.session_state.wind_Z1}m')
+                        data_dict[f'Wind Speed {st.session_state.wind_Z1}m'] = windz1_data.values.flatten() if windz1_data is not None else None
+                        st.number_input(f"Height 0:",
+                            min_value=0.0, 
+                            value=st.session_state.wind_Z0,
+                            key=f"wind_Z0"
+                        )
+                        windz0_data = load_csv_data(uploaded_file, delimiter, decimal, f'Wind Speed {st.session_state.wind_Z0}m')
+                        data_dict[f'Wind Speed {st.session_state.wind_Z0}m'] = windz0_data.values.flatten() if windz0_data is not None else None
+                        temperature_data = load_csv_data(uploaded_file, delimiter, decimal, 'Temperature')
+                        data_dict['Temperature'] = temperature_data.values.flatten() if temperature_data is not None else None
 
-                    # Assign the total values after processing all units
-                    data_dict[f'Model {resource} Power Total'] = total_power_output
-                    if resource == "generator":
-                        data_dict[f'Model Fuel Consumption Total'] = total_fuel_consumption
-
-                # Combine all data into a DataFrame if time data and data dictionary are available
                 if time_data is not None and all(value is not None for value in data_dict.values()):
                     # Combine all data into a single DataFrame (for all elements)
-                    data = pd.DataFrame({
+                    wind_data = pd.DataFrame({
                         'UTC Time': time_data.values,
-                        **{k: v for k, v in data_dict.items() if v is not None}  # Dynamically unpack the dictionary and filter None values
+                        **data_dict  # Dynamically unpack the dictionary
                     })
 
-                # Display the shape of the full DataFrame
-                st.write(f'Shape of Dataframe: {data.shape}')
+                    # Display the shape of the full DataFrame
+                    st.write(f'Shape of Dataframe: {wind_data.shape}')
 
-                # Display only the first 10 rows of the DataFrame in the UI
-                st.dataframe(data.head(10))
+                    # Display only the first 10 rows of the DataFrame in the UI
+                    st.dataframe(wind_data.head(10))
 
-                # Button to save the full DataFrame
-                if st.button(f"Save Data for", key=f"save_solar_csv"):
-                    # Store the combined data in session state
-                    st.session_state[f'{resource}_data_uploaded'] = True  # Set the flag to True since data is now uploaded
-                    save_data(data, project_name, resource)
+                    # Button to save the full DataFrame
+                    if st.button(f"Save Data for", key=f"save_solar_csv"):
+                        save_wind_data(wind_data, project_name)
+                        st.session_state.wind_speed_data_uploaded = True  # Set the flag to True since data is now uploaded
+                        st.rerun()
+
+        elif data_source == "Download from PVGIS":
+            if st.button(f"Download Wind Data from PVGIS", key=f"download_wind_data"):
+                with st.spinner('Downloading data from PVGIS...'):
+
+                    st.session_state.wind_selected_input_type = 'Simple'
+
+                    irradiation_data = download_pvgis_wind_data( 
+                        lat=st.session_state.lat, 
+                        lon=st.session_state.lon
+                    )
+
+                    save_wind_data(irradiation_data, project_name)
+                    st.session_state.wind_speed_data_uploaded = True  # Set the flag to True since data is now uploaded
                     st.rerun()

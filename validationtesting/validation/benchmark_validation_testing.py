@@ -12,10 +12,8 @@ class ERROR():
         self.logger.info("Starting Error calculation...")
         self.project_name = st.session_state.get("project_name")
         components = {
-            "solar_pv"
-            #wind: wind_benchmark,
-            #generator: generator_benchmark,
-            #battery: battery_benchmark
+            "solar_pv",
+            "wind"
         }
 
         combined_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results" / f"combined_model_benchmark.csv"
@@ -25,7 +23,6 @@ class ERROR():
         benchmark_data = {"total": {}, "yearly": {}, "monthly": {}, "hourly": {}}
         model_data = {"total": {}, "yearly": {}, "monthly": {}, "hourly": {}}
         mae_data = {"total": {}, "yearly": {}, "monthly": {}, "hourly": {}}
-        #mape_data = {"total": {}, "yearly": {}, "monthly": {}, "hourly": {}}
         rmse_data = {"total": {}, "yearly": {}, "monthly": {}, "hourly": {}}
 
 
@@ -34,16 +31,12 @@ class ERROR():
             if component:
                 if st.session_state[f'{component_name}_model_output_scope'] == "Per Unit":
                     for i in range (st.session_state[f'{component_name}_num_units']):
-                        logging.info(f"Calculating for Unit {i+1} for {component_name}")
                         columns_to_keep = ['UTC Time', f'Model {component_name} Power Unit {i+1}', f'Benchmark {component_name} Power Unit {i+1}']
                         temp_df = combined_df[columns_to_keep]
                         temp_df = temp_df.set_index('UTC Time')
                         temp_df = temp_df.rename(columns={ f'Model {component_name} Power Unit {i+1}': 'model_output', f'Benchmark {component_name} Power Unit {i+1}': 'benchmark_output'})
-                        logging.info(temp_df)
                         total_mae, yearly_mae, monthly_mae, hourly_mae = self.mae(temp_df)
-                        #total_mape, yearly_mape, monthly_mape, hourly_mape = self.mape(temp_df)
                         total_rmse, yearly_rmse, monthly_rmse, hourly_rmse = self.rmse(temp_df)
-                        logging.info(monthly_rmse)
                         
                         benchmark_mean = temp_df['benchmark_output'].mean()
                         yearly_benchmark_series = temp_df.groupby(temp_df.index.year)['benchmark_output'].mean()
@@ -75,9 +68,6 @@ class ERROR():
                         model_data["yearly"][f"Mean Model Unit {i + 1}"] = list(yearly_model_mean.values())
                         model_data["monthly"][f"Mean Model Unit {i + 1}"] = list(monthly_model_mean.values())
                         model_data["hourly"][f"Mean Model Unit {i + 1}"] = list(hourly_model_mean.values())
-
-                        logging.info(f"yearly_benchmark_mean={yearly_benchmark_mean}")
-                        logging.info(f"yearly_model_mean={yearly_model_mean}")
                         
                         mae_data["yearly"][f"Year"] = list(yearly_mae.keys()) 
                         mae_data["monthly"][f"Month"] = list(monthly_mae.keys())
@@ -87,15 +77,6 @@ class ERROR():
                         mae_data["yearly"][f"MAE Unit {i + 1}"] = list(yearly_mae.values())
                         mae_data["monthly"][f"MAE Unit {i + 1}"] = list(monthly_mae.values())
                         mae_data["hourly"][f"MAE Unit {i + 1}"] = list(hourly_mae.values())
-
-                        #mape_data["yearly"][f"Year"] = list(yearly_mape.keys()) 
-                        #mape_data["monthly"][f"Month"] = list(monthly_mape.keys())
-                        #mape_data["hourly"][f"Hour"] = list(hourly_mape.keys())
-
-                        #mape_data["total"][f"MAPE Unit {i + 1}"] = [total_mape["Total MAPE"]]
-                        #mape_data["yearly"][f"MAPE Unit {i + 1}"] = list(yearly_mape.values())
-                        #mape_data["monthly"][f"MAPE Unit {i + 1}"] = list(monthly_mape.values())
-                        #mape_data["hourly"][f"MAPE Unit {i + 1}"] = list(hourly_mape.values())
 
                         rmse_data["yearly"][f"Year"] = list(yearly_rmse.keys()) 
                         rmse_data["monthly"][f"Month"] = list(monthly_rmse.keys())
@@ -112,7 +93,6 @@ class ERROR():
                 temp_df = temp_df.set_index('UTC Time')
                 temp_df = temp_df.rename(columns={ f'Model {component_name} Power Total': 'model_output', f'Benchmark {component_name} Power Total': 'benchmark_output'})
                 total_mae, yearly_mae, monthly_mae, hourly_mae = self.mae(temp_df)
-                #total_mape, yearly_mape, monthly_mape, hourly_mape = self.mape(temp_df)
                 total_rmse, yearly_rmse, monthly_rmse, hourly_rmse = self.rmse(temp_df)
 
                 benchmark_mean = temp_df['benchmark_output'].mean()
@@ -154,15 +134,6 @@ class ERROR():
                 mae_data["monthly"]["MAE Total"] = list(monthly_mae.values())
                 mae_data["hourly"]["MAE Total"] = list(hourly_mae.values())
 
-                #mape_data["yearly"][f"Year"] = list(yearly_mape.keys()) 
-                #mape_data["monthly"][f"Month"] = list(monthly_mape.keys())
-                #mape_data["hourly"][f"Hour"] = list(hourly_mape.keys())
-
-                #mape_data["total"]["MAPE Total"] = [total_mape["Total MAPE"]]
-                #mape_data["yearly"]["MAPE Total"] = list(yearly_mape.values())
-                #mape_data["monthly"]["MAPE Total"] = list(monthly_mape.values())
-                #mape_data["hourly"]["MAPE Total"] = list(hourly_mape.values())
-
                 rmse_data["yearly"][f"Year"] = list(yearly_rmse.keys()) 
                 rmse_data["monthly"][f"Month"] = list(monthly_rmse.keys())
                 rmse_data["hourly"][f"Hour"] = list(hourly_rmse.keys())
@@ -175,14 +146,10 @@ class ERROR():
                 self.save_as_csv(benchmark_data, "Benchmark_Mean", component_name)
                 self.save_as_csv(model_data, "Model_Mean", component_name)
                 self.save_as_csv(mae_data, "MAE", component_name)
-                #self.save_as_csv(mape_data, "MAPE", component_name)
                 self.save_as_csv(rmse_data, "RMSE", component_name)
 
-                logging.info(f'MAE = {total_mae["Total MAE"]}')
-                #logging.info(f'MAPE = {total_mape["Total MAPE"]}')
-                logging.info(f'RMSE = {total_rmse["Total RMSE"]}')
                 results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results"
-                logging.info(f'The results on a yearly, monthly and hourly base are saved in {results_data_path}')
+                logging.info(f'The errors for {component_name} on a yearly, monthly and hourly base are saved in {results_data_path}')
 
     def save_as_csv(self, data, metric_name, component_name):
         results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results"
@@ -191,26 +158,6 @@ class ERROR():
             df.index.name = granularity.capitalize()
             results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results" / f"{component_name}_{metric_name.lower()}_{granularity}.csv"
             df.to_csv(results_data_path)
-
-    def mape(self, df):
-        df = df[df['benchmark_output'] != 0]
-
-        # Total MAPE
-        total_mape = {"Total MAPE": np.mean(np.abs((df['model_output'] - df['benchmark_output']) / df['benchmark_output'])) * 100}
-
-        # Yearly MAPE
-        yearly_mape_series = df.groupby(df.index.year).apply(lambda x: np.mean(np.abs((x['model_output'] - x['benchmark_output']) / x['benchmark_output'])) * 100)
-        yearly_mape = {str(year): mape for year, mape in yearly_mape_series.items()}
-
-        # Monthly MAPE
-        monthly_mape_series = df.groupby(df.index.month).apply(lambda x: np.mean(np.abs((x['model_output'] - x['benchmark_output']) / x['benchmark_output'])) * 100)
-        monthly_mape = {pd.to_datetime(month, format='%m').strftime('%B'): mape for month, mape in monthly_mape_series.items()}
-
-        # Hourly MAPE
-        hourly_mape_series = df.groupby(df.index.hour).apply(lambda x: np.mean(np.abs((x['model_output'] - x['benchmark_output']) / x['benchmark_output'])) * 100)
-        hourly_mape = {f"{hour:02d}:00": mape for hour, mape in hourly_mape_series.items()}
-
-        return total_mape, yearly_mape, monthly_mape, hourly_mape
     
     def mae(self, df):
         # Total MAE

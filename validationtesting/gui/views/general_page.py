@@ -35,20 +35,8 @@ def general():
     """Streamlit page for configuring advanced settings."""
     # Page title and description
     st.title("General Project Information")
-    st.write("Select components that should be included in the validtation test.")
 
     initialize_session_state(st.session_state.default_values, 'general_info')
-
-    with st.expander("📅 Project Timeline", expanded=False):
-        st.session_state.start_date = st.date_input(
-            "Start Date of the Project:", 
-            value=st.session_state.start_date,
-            help="Select the start date of the project.")
-
-        st.session_state.end_date = st.date_input(
-            "End Date of the Project:", 
-            value=st.session_state.end_date,
-            help="Select the end date of the project.")
 
     # Location selection
     st.subheader("Select Project Location")

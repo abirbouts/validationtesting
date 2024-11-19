@@ -1,7 +1,7 @@
 import streamlit as st
 from pathlib import Path
 from datetime import datetime
-from validationtesting.model.parameters import ProjectParameters
+from validationtesting.validation.parameters import ProjectParameters
 from config.path_manager import PathManager
 
 def datetime_to_str(obj):
