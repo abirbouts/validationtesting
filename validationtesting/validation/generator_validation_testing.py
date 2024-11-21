@@ -4,7 +4,7 @@ import logging
 from config.path_manager import PathManager
 import datetime
 
-def get_efficiency_from_tabular(load, type_int):
+def get_efficiency_from_tabular(load: float, type_int: int) -> float:
     project_name = st.session_state.get("project_name")
     dynamic_efficiency_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"generator_dynamic_efficiency_type_{type_int}.csv"
     
@@ -36,7 +36,7 @@ def get_efficiency_from_tabular(load, type_int):
     
     return interpolated_efficiency
 
-def get_efficiency_from_formula(generator_power, type_int):
+def get_efficiency_from_formula(generator_power: float, type_int: int) -> float:
     # Get the formula for the specified generator type
     formula = st.session_state.generator_efficiency_formula[type_int - 1]  # Example: "100 * (P / 20.0)"
     
@@ -50,14 +50,14 @@ def get_efficiency_from_formula(generator_power, type_int):
         return None
 
 
-def test_power_limits(power, max_power, min_power):
+def test_power_limits(power: float, max_power: float, min_power: float) -> bool:
     if power > max_power or power < min_power:
         return False
     else: 
         return True
 
-def temporal_degradation_efficiency(efficiency, degradation_rate, date, installation_date):
-    def get_years_since_install(installation_date, current_date):
+def temporal_degradation_efficiency(efficiency: float, degradation_rate: float, date: datetime.date, installation_date: datetime.date) -> float:
+    def get_years_since_install(installation_date: datetime.date, current_date: datetime.date) -> float:
         # Ensure both are 'date' objects
         installation_date = installation_date.date()
         
@@ -67,10 +67,10 @@ def temporal_degradation_efficiency(efficiency, degradation_rate, date, installa
         return years_since_install
         
     years_installed = get_years_since_install(installation_date, date)
-    efficiency = efficiency * (1- (degradation_rate) * years_installed)
+    efficiency = efficiency * (1 - (degradation_rate) * years_installed)
     return efficiency
 
-def get_fuel_consumption(power, lhv, efficiency):
+def get_fuel_consumption(power: float, lhv: float, efficiency: float) -> float:
     """
     Calculate the fuel consumption for a generator based on its power, LHV, and efficiency.
 
@@ -94,7 +94,7 @@ def get_fuel_consumption(power, lhv, efficiency):
 
     return fuel_consumption
     
-def generator_validation_testing():
+def generator_validation_testing() -> None:
     logging.info('Running generator validation testing')
     project_name = st.session_state.get("project_name")
     generator_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"model_output_generator.csv"

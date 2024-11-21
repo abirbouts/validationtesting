@@ -9,7 +9,7 @@ from validationtesting.validation.solar_benchmarking import solar_pv_benchmark
 from validationtesting.validation.wind_benchmarking import wind_benchmark
 
 class Benchmark():
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger('Benchmark')
         self.logger.info("Starting Benchmark calculation...")
         self.project_name = st.session_state.get("project_name")
@@ -33,7 +33,7 @@ class Benchmark():
         combined_df.to_csv(combined_data_path, index=True)
         self.logger.info(f"Combined Benchmark saved in {combined_data_path}")
 
-    def create_df(self, resource):
+    def create_df(self, resource: str) -> pd.DataFrame:
         benchmark_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results" / f"{resource}_benchmark.csv"
         model_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "inputs" / f"model_output_{resource}.csv"
         benchmark_df = pd.read_csv(benchmark_data_path)

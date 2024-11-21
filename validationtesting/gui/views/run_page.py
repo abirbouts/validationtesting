@@ -17,7 +17,7 @@ from validationtesting.validation.generator_validation_testing import generator_
 from config.path_manager import PathManager
 
 # Function to set up logging to both a file and StringIO stream
-def setup_logging(log_file_path):
+def setup_logging(log_file_path: Path) -> StringIO:
     # Set up StringIO stream to capture logs for the UI
     log_stream = StringIO()
 
@@ -48,13 +48,13 @@ def setup_logging(log_file_path):
 
     return log_stream
 
-def datetime_to_str(obj):
+def datetime_to_str(obj: object) -> str:
     if isinstance(obj, datetime):
         return obj.isoformat()
     return obj
 
 
-def run_model():
+def run_model() -> None:
     st.title("Run Validation Testing")
     
     # Get the current project's YAML file path

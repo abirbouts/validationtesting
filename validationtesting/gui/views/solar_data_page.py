@@ -7,7 +7,7 @@ import pytz
 import requests
 
 
-def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str):
+def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str) -> pd.DataFrame:
     """
     Load CSV data with given delimiter and decimal options.
     
@@ -15,7 +15,7 @@ def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str):
         uploaded_file: The uploaded CSV file.
         delimiter (str): The delimiter used in the CSV file.
         decimal (str): The decimal separator used in the CSV file.
-        resource_name (Optional[str]): The name of the resource (used for column naming).
+        parameter (str): The name of the parameter (used for column naming).
     
     Returns:
         Optional[pd.DataFrame]: The loaded DataFrame or None if an error occurred.
@@ -45,7 +45,7 @@ def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str):
         return None
     
 # Function to load and process time series data with time zones and format handling
-def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: str, time_format: str, timezone: str):
+def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: str, time_format: str, timezone: str) -> pd.DataFrame:
     """
     Load CSV time-series data with given delimiter, decimal options, and convert the time column to UTC datetime.
     
@@ -94,7 +94,7 @@ def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: st
         return None
 
 
-def render_time_format_timezone_selectors():
+def render_time_format_timezone_selectors() -> tuple:
     # List of all available time zones with country names
     timezones_with_countries = ["Universal Time Coordinated - UTC"] 
     for country_code, timezones in pytz.country_timezones.items():
@@ -136,7 +136,7 @@ def render_time_format_timezone_selectors():
 
     return time_format, selected_timezone
 
-def download_pvgis_pv_data(lat, lon):
+def download_pvgis_pv_data(lat, lon) -> pd.DataFrame:
     URL = 'https://re.jrc.ec.europa.eu/api/tmy?lat=' + str(lat) + '&lon=' + str(lon) + '&outputformat=json'
 
     # Make the request
@@ -191,19 +191,7 @@ def irradiation_data() -> None:
             "Select Data Source",
             ("Upload your own data", "Download from PVGIS")
         )
-        '''
-        # Set up input types based on session state
-        if "Input_G_total" not in st.session_state:
-            st.session_state.Input_G_total = False
-        if "Input_GHI" not in st.session_state:
-            st.session_state.Input_GHI = False
-        if "Input_DHI" not in st.session_state:
-            st.session_state.Input_DHI = False
-        if "Input_DNI" not in st.session_state:
-            st.session_state.Input_DNI = False
-        if "data_uploaded" not in st.session_state:
-            st.session_state.data_uploaded = False  # New flag to track upload status
-        '''
+
         if data_source == "Upload your own data":
             # Dropdown for selecting the input type
             st.session_state.selected_input_type = st.selectbox(
@@ -211,7 +199,6 @@ def irradiation_data() -> None:
                 [
                     "GHI & DHI", 
                     "DHI & DNI", 
-                    "GHI (Calculating rest with Erbs etc.)", 
                     "Total Irradiance"
                 ]
             )
@@ -227,12 +214,6 @@ def irradiation_data() -> None:
                 st.session_state.Input_GHI = False
                 st.session_state.Input_DHI = True
                 st.session_state.Input_DNI = True
-                st.session_state.Input_G_total = False
-
-            elif st.session_state.selected_input_type == "GHI (Calculating rest with Erbs etc.)":
-                st.session_state.Input_GHI = True
-                st.session_state.Input_DHI = False
-                st.session_state.Input_DNI = False
                 st.session_state.Input_G_total = False
 
             elif st.session_state.selected_input_type == "Total Irradiance":

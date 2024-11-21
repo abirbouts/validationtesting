@@ -97,9 +97,11 @@ wind_parameters:
     wind_temporal_degradation: false
     wind_temporal_degradation_rate: [1.0]
     wind_speed_data_uploaded: false
-    wind_selected_input_type: "Complex"
+    wind_selected_input_type: "Two Wind Speed Heights given"
     wind_Z1: 50.0
     wind_Z0: 10.0
+    wind_surface_type: "Suburbs"
+    wind_surface_roughness: 1.50
 
 generator_parameters:
     generator_num_units: 1

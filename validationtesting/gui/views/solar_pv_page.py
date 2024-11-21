@@ -5,7 +5,7 @@ import datetime as dt
 import pytz
 
 @st.dialog("Enter Battery Specifications")
-def enter_specifications(i):
+def enter_specifications(i: int) -> None:
     st.write(f"Enter Battery Specifications for Type {i+1}.")
     if len(st.session_state.pv_lifetime) != st.session_state.num_solar_pv_types:
         st.session_state.pv_lifetime = [0] * st.session_state.num_solar_pv_types
@@ -50,7 +50,7 @@ def enter_specifications(i):
     if st.button("Close"):
         st.rerun()
 
-def render_timezone_selector():
+def render_timezone_selector() -> str:
     # List of all available time zones with country names
     timezones_with_countries = ["Universal Time Coordinated - UTC"]  # Manually add UTC at the beginning
     for country_code, timezones in pytz.country_timezones.items():
@@ -67,7 +67,7 @@ def render_timezone_selector():
     return selected_timezone
 
 # Function to convert installation dates to UTC
-def convert_dates_to_utc(installation_dates, timezone_str):
+def convert_dates_to_utc(installation_dates: list, timezone_str: str) -> list:
     # Load the timezone
     local_tz = pytz.timezone(timezone_str)
 
@@ -84,7 +84,7 @@ def convert_dates_to_utc(installation_dates, timezone_str):
 
     return installation_dates_utc
 
-def combine_date_and_time(date_value, time_value):
+def combine_date_and_time(date_value: dt.date, time_value: dt.time) -> dt.datetime:
     """Combine date and time into a datetime object."""
     return dt.datetime.combine(date_value, time_value)
 

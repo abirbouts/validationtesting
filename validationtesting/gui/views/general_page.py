@@ -1,3 +1,18 @@
+"""
+This script defines a Streamlit page for configuring general project information, including location selection.
+It includes functions to get coordinates from an address, handle location input by clicking on a map, and render the main page with 
+options to select the project location either by entering an address, clicking on a map or inputting coordinates.
+Functions:
+    get_coordinates(address: str) -> Tuple[float, float]:
+        Get the latitude and longitude coordinates for the given address.
+    handle_location_input(address: str) -> None:
+        Handle the input address to get the coordinates and update the session state.
+    general():
+        Renders the main Streamlit page for configuring general project information, including location selection 
+        either by entering an address or manually inputting coordinates.
+"""
+
+
 import streamlit as st
 import pandas as pd
 import folium
@@ -31,7 +46,7 @@ def handle_location_input(address: str) -> None:
     except ValueError as e:
         st.error(f"Could not find location: {e}")
 
-def general():
+def general() -> None:
     """Streamlit page for configuring advanced settings."""
     # Page title and description
     st.title("General Project Information")

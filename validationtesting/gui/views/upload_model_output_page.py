@@ -7,7 +7,7 @@ import pytz
 import numpy as np
 
 
-def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str):
+def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str) -> pd.DataFrame:
     """
     Load CSV data with given delimiter and decimal options.
     
@@ -45,7 +45,7 @@ def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str):
         return None
     
 # Function to load and process time series data with time zones and format handling
-def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: str, time_format: str, timezone: str):
+def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: str, time_format: str, timezone: str) -> pd.Series:
     """
     Load CSV time-series data with given delimiter, decimal options, and convert the time column to UTC datetime.
     
@@ -94,7 +94,7 @@ def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: st
         return None
 
 
-def render_time_format_timezone_selectors():
+def render_time_format_timezone_selectors() -> tuple:
     # List of all available time zones with country names
     timezones_with_countries = ["Universal Time Coordinated - UTC"] 
     for country_code, timezones in pytz.country_timezones.items():

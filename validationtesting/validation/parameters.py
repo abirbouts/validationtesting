@@ -188,6 +188,8 @@ class Wind(BaseModel):
     wind_selected_input_type: str
     wind_Z1: float
     wind_Z0: float
+    wind_surface_type: str
+    wind_surface_roughness: float
 
 class Generator(BaseModel):
     """

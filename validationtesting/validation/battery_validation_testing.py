@@ -5,13 +5,13 @@ from config.path_manager import PathManager
 import datetime
 
 
-def test_charging_rate(battery_power, max_charge_power, max_discharge_power):
-    if battery_power > max_discharge_power or (0-battery_power) > max_charge_power:
+def test_charging_rate(battery_power: float, max_charge_power: float, max_discharge_power: float) -> bool:
+    if battery_power > max_discharge_power or (0 - battery_power) > max_charge_power:
         return False
-    else: 
+    else:
         return True
     
-def test_soc(battery_capacity, current_energy_stored, min_soc, max_soc):
+def test_soc(battery_capacity: float, current_energy_stored: float, min_soc: float, max_soc: float) -> tuple:
     # Check SoC with respect to effective capacity
     soc = (current_energy_stored / battery_capacity)  # SoC as a percentage of current effective capacity
     # Apply SoC limits
@@ -22,8 +22,8 @@ def test_soc(battery_capacity, current_energy_stored, min_soc, max_soc):
     else:
         return soc, True
 
-def temporal_degradation_capacity(battery_capacity, degradation_rate, date, installation_date):
-    def get_years_since_install(installation_date, current_date):
+def temporal_degradation_capacity(battery_capacity: float, degradation_rate: float, date: datetime.date, installation_date: datetime.date) -> float:
+    def get_years_since_install(installation_date: datetime.date, current_date: datetime.date) -> float:
         # Ensure both are 'date' objects
         installation_date = installation_date.date()
         
@@ -33,10 +33,10 @@ def temporal_degradation_capacity(battery_capacity, degradation_rate, date, inst
         return years_since_install
         
     years_installed = get_years_since_install(installation_date, date)
-    battery_capacity = battery_capacity * (1- (degradation_rate) * years_installed)
+    battery_capacity = battery_capacity * (1 - (degradation_rate) * years_installed)
     return battery_capacity
     
-def battery_validation_testing():
+def battery_validation_testing() -> None:
     logging.info('Running battery validation testing')
     project_name = st.session_state.get("project_name")
     battery_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"model_output_battery.csv"

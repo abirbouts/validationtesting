@@ -6,8 +6,8 @@ import datetime
 import math
 import numpy as np
 
-def temporal_degradation_efficiency(efficincy, degradation_rate, date, installation_date):
-    def get_years_since_install(installation_date, current_date):
+def temporal_degradation_efficiency(efficiency: float, degradation_rate: float, date: datetime.date, installation_date: datetime.date) -> float:
+    def get_years_since_install(installation_date: datetime.date, current_date: datetime.date) -> float:
         # Ensure both are 'date' objects
         installation_date = installation_date.date()
         
@@ -17,10 +17,23 @@ def temporal_degradation_efficiency(efficincy, degradation_rate, date, installat
         return years_since_install
         
     years_installed = get_years_since_install(installation_date, date)
-    efficincy = efficincy * (1- (degradation_rate) * years_installed)
-    return efficincy
+    efficiency = efficiency * (1 - (degradation_rate) * years_installed)
+    return efficiency
 
-def shear_exp(w_Z1, w_Z0, Z_1, Z_0, Z_rot):
+def shear_exp(w_Z1: float, w_Z0: float, Z_1: float, Z_0: float, Z_rot: float) -> float:
+    """
+    Calculate the rotor wind speed using the shear exponent method.
+
+    Parameters:
+    w_Z1 (float): Wind speed at height Z_1.
+    w_Z0 (float): Wind speed at height Z_0.
+    Z_1 (float): Height Z_1.
+    Z_0 (float): Height Z_0.
+    Z_rot (float): Rotor height.
+
+    Returns:
+    float: Calculated rotor wind speed. If either w_Z1 or w_Z0 is zero, returns 0.
+    """
     if w_Z1 == 0 or w_Z0 == 0:
         alpha = 0
         U_rotor = 0
@@ -29,7 +42,7 @@ def shear_exp(w_Z1, w_Z0, Z_1, Z_0, Z_rot):
         U_rotor = w_Z0 * (Z_rot / Z_0) ** alpha
     return U_rotor
 
-def get_wind_power_complex(w_Z1, w_Z0, Z_1, Z_0, Z_rot, power_curve, drivetrain_efficiency):
+def get_wind_power_complex(w_Z1: float, w_Z0: float, Z_1: float, Z_0: float, Z_rot: float, power_curve: pd.DataFrame, drivetrain_efficiency: float) -> float:
     U_rotor = shear_exp(w_Z1, w_Z0, Z_1, Z_0, Z_rot)
     wind_speeds_power_curve = power_curve['Wind Speed [m/s]'].values
     power_power_curve = power_curve['Power (W)'].values
@@ -37,13 +50,13 @@ def get_wind_power_complex(w_Z1, w_Z0, Z_1, Z_0, Z_rot, power_curve, drivetrain_
     wind_power = interpolated_value * drivetrain_efficiency
     return wind_power
 
-def get_wind_power_simple(wind_speed, power_curve):
+def get_wind_power_simple(wind_speed: float, power_curve: pd.DataFrame) -> float:
     wind_speeds_power_curve = power_curve['Wind Speed [m/s]']
     power_power_curve = power_curve['Power (W)']
     interpolated_value = np.interp(wind_speed, wind_speeds_power_curve, power_power_curve) * 1000
     return interpolated_value
 
-def wind_benchmark():
+def wind_benchmark() -> None:
     logging.info('Running wind validation testing')
     project_name = st.session_state.get("project_name")
     wind_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"wind_data.csv"

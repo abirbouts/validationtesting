@@ -7,7 +7,7 @@ import pytz
 import requests
 
 
-def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str):
+def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str) -> pd.DataFrame:
     """
     Load CSV data with given delimiter and decimal options.
     
@@ -45,7 +45,7 @@ def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str):
         return None
     
 # Function to load and process time series data with time zones and format handling
-def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: str, time_format: str, timezone: str):
+def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: str, time_format: str, timezone: str) -> pd.DataFrame:
     """
     Load CSV time-series data with given delimiter, decimal options, and convert the time column to UTC datetime.
     
@@ -94,7 +94,7 @@ def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: st
         return None
 
 
-def render_time_format_timezone_selectors():
+def render_time_format_timezone_selectors() -> tuple:
     # List of all available time zones with country names
     timezones_with_countries = ["Universal Time Coordinated - UTC"] 
     for country_code, timezones in pytz.country_timezones.items():
@@ -136,7 +136,7 @@ def render_time_format_timezone_selectors():
 
     return time_format, selected_timezone
 
-def download_pvgis_wind_data(lat, lon):
+def download_pvgis_wind_data(lat, lon) -> pd.DataFrame:
     URL = 'https://re.jrc.ec.europa.eu/api/tmy?lat=' + str(lat) + '&lon=' + str(lon) + '&outputformat=json'
 
     # Make the request
@@ -191,41 +191,45 @@ def wind_data() -> None:
         )
 
         if data_source == "Upload your own data":
-            # Dropdown for selecting the input type
-            st.session_state.wind_selected_input_type = st.selectbox(
-                "Chooses ",
-                [
-                    "Simple", 
-                    "Complex"
-                ]
-            )
 
 
             uploaded_file, delimiter, decimal = csv_upload_interface(f"solar")
             if uploaded_file:
+                # Dropdown for selecting the input type
+                st.session_state.wind_selected_input_type = st.selectbox(
+                    "Chooses ",
+                    [
+                        "One Wind Speed Height given", 
+                        "Two Wind Speed Heights given"
+                    ]
+                )
                 with st.expander(f"Time", expanded=False):
                     time_format, timezone = render_time_format_timezone_selectors()
                     time_data = load_timeseries_csv_with_timezone(uploaded_file, delimiter, decimal, time_format, timezone)
                 with st.expander(f"Data", expanded=False):
                     data_dict = {}
-                    if st.session_state.wind_selected_input_type == "Simple":         
-                        wind_data = load_csv_data(uploaded_file, delimiter, decimal, 'Wind Speed')
-                        data_dict['Wind Speed'] = wind_data.values.flatten() if wind_data is not None else None
-                    if st.session_state.wind_selected_input_type == "Complex": 
-                        st.number_input(
+                    if st.session_state.wind_selected_input_type == "One Wind Speed Height given":
+                        st.session_state.wind_Z1 = st.number_input(
                             "Height 1:", 
                             min_value=0.0, 
                             value=st.session_state.wind_Z1,  # This displays the value from `st.session_state`
-                            key="wind_Z1"  # This associates the widget with `st.session_state.wind_Z1`
+                        )
+
+                        wind_data = load_csv_data(uploaded_file, delimiter, decimal, f'Wind Speed {st.session_state.wind_Z1}m')
+                        data_dict[f'Wind Speed {st.session_state.wind_Z1}m'] = wind_data.values.flatten() if wind_data is not None else None
+                    if st.session_state.wind_selected_input_type == "Two Wind Speed Heights given": 
+                        st.session_state.wind_Z1 = st.number_input(
+                            "Height 1:", 
+                            min_value=0.0, 
+                            value=st.session_state.wind_Z1,  # This displays the value from `st.session_state`
                         )
 
                         # Use the value directly from `st.session_state.wind_Z1`
                         windz1_data = load_csv_data(uploaded_file, delimiter, decimal, f'Wind Speed {st.session_state.wind_Z1}m')
                         data_dict[f'Wind Speed {st.session_state.wind_Z1}m'] = windz1_data.values.flatten() if windz1_data is not None else None
-                        st.number_input(f"Height 0:",
+                        st.session_state.wind_Z0 = st.number_input(f"Height 0:",
                             min_value=0.0, 
                             value=st.session_state.wind_Z0,
-                            key=f"wind_Z0"
                         )
                         windz0_data = load_csv_data(uploaded_file, delimiter, decimal, f'Wind Speed {st.session_state.wind_Z0}m')
                         data_dict[f'Wind Speed {st.session_state.wind_Z0}m'] = windz0_data.values.flatten() if windz0_data is not None else None
@@ -252,16 +256,38 @@ def wind_data() -> None:
                         st.rerun()
 
         elif data_source == "Download from PVGIS":
+            surface_options = ["Very smooth, ice or mud",
+                                "Snow surface", 
+                                "Lawn grass", 
+                                "Rough pasture", 
+                                "Fallow field",
+                                "Crops",
+                                "Few Trees",
+                                "Many trees, hedges, few buildings",
+                                "Forest and woodlands",
+                                "Suburbs",
+                                "Centers of cities with tall buildings"]
+            surface_roughnesses = [0.00001, 0.003, 0.008, 0.01, 0.03, 0.05, 0.10, 0.25, 0.50, 1.50, 3.00]
+
+            st.session_state.surface_type = st.selectbox(
+                "Surface Type:",
+                options=surface_options,
+                index=surface_options.index(st.session_state.surface_type) if st.session_state.surface_type in surface_options else 0, 
+                help="Select the type of surface where the wind turbine is installed. This affects the wind speed profile.")
+
+            st.session_state.wind_surface_roughness = surface_roughnesses[surface_options.index(st.session_state.surface_type)]
+
             if st.button(f"Download Wind Data from PVGIS", key=f"download_wind_data"):
                 with st.spinner('Downloading data from PVGIS...'):
 
-                    st.session_state.wind_selected_input_type = 'Simple'
+                    st.session_state.wind_selected_input_type = "One Wind Speed Height given"
+                    st.session_state.wind_Z1 = 10.0
 
-                    irradiation_data = download_pvgis_wind_data( 
-                        lat=st.session_state.lat, 
+                    wind_data = download_pvgis_wind_data( 
+                        lat=st.session_state.lat,
                         lon=st.session_state.lon
                     )
 
-                    save_wind_data(irradiation_data, project_name)
+                    save_wind_data(wind_data, project_name)
                     st.session_state.wind_speed_data_uploaded = True  # Set the flag to True since data is now uploaded
                     st.rerun()

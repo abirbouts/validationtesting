@@ -7,7 +7,7 @@ import sys
 
 from validationtesting.gui.views.utils import initialize_session_state
 
-def plot_mae(component):
+def plot_mae(component: str) -> None:
     # Load project name from session state
     project_name = st.session_state.get("project_name")
     granularities = ["yearly", "monthly", "hourly"]
@@ -55,15 +55,15 @@ def plot_mae(component):
         plt.savefig(plot_path)
         plt.close()  # Close the plot to free up memory
 
-def solar_pv_generate_plots():
+def solar_pv_generate_plots() -> None:
     plot_mae("solar_pv")
 
-def wind_generate_plots():
+def wind_generate_plots() -> None:
     plot_mae("wind")
 
 
 
-def generate_plots():
+def generate_plots() -> None:
     st.title("Plots")
 
     initialize_session_state(st.session_state.default_values, 'generate_plots')
@@ -77,8 +77,8 @@ def generate_plots():
         used_components.append("Solar PV")
     if st.session_state.wind:
         used_components.append("Wind")
-    if st.session_state.generator:
-        used_components.append("Generator")
+    #if st.session_state.generator:
+    #    used_components.append("Generator")
     if st.session_state.battery:
         used_components.append("Battery")
 

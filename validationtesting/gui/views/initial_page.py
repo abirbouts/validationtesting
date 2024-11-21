@@ -4,7 +4,7 @@ from config.path_manager import PathManager
 from validationtesting.validation.parameters import ProjectParameters
 from validationtesting.gui.views.utils import initialize_session_state
 
-def create_new_project(project_name):
+def create_new_project(project_name: str) -> bool:
     """Create a new project with the given name and description."""
     path_manager = PathManager(project_name)
     project_folder = path_manager.PROJECTS_FOLDER_PATH / project_name
@@ -40,8 +40,18 @@ def create_new_project(project_name):
     
     return True
 
-def load_existing_project(uploaded_file):
-    """Load an existing project configuration file."""
+def load_existing_project(uploaded_file) -> bool:
+    """
+    Load an existing project configuration file.
+    This function takes an uploaded file, extracts the project name, and sets up the necessary
+    folder structure for the project if it doesn't already exist. It then saves the uploaded
+    file to the project folder and initializes various session state parameters from the 
+    configuration file.
+    Args:
+        uploaded_file (UploadedFile): The uploaded project configuration file.
+    Returns:
+        bool: True if the project was successfully loaded, False otherwise.
+    """
     try:
         project_name = Path(uploaded_file.name).stem
         path_manager = PathManager(project_name)
@@ -78,9 +88,9 @@ def load_existing_project(uploaded_file):
         st.error(f"Failed to load configuration: {e}")
         return False
 
-def initial_page():
+def initial_page() -> None:
     """Streamlit page for creating a new project or loading existing configuration files."""
-    st.title("Validation Testing!")
+    st.title("Validation Testing")
 
     # Check if a project is already selected
     if 'project_name' in st.session_state and st.session_state.project_name:

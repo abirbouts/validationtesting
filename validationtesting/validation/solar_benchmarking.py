@@ -7,8 +7,8 @@ from config.path_manager import PathManager
 import validationtesting.validation.get_solar_irradiance as get_solar_irradiance 
 
 
-def get_solar_pv_power(PV_area, G_total, T_ambient, efficiency, dynamic_efficiency, temperature_coefficient, T_ref, NOCT, T_ref_NOCT, ref_irradiance_NOCT, degradation, degradation_rate, date, installation_date, lifetime):
-    def get_years_since_install(installation_date, current_date):
+def get_solar_pv_power(PV_area: float, G_total: float, T_ambient: float, efficiency: float, dynamic_efficiency: bool, temperature_coefficient: float, T_ref: float, NOCT: float, T_ref_NOCT: float, ref_irradiance_NOCT: float, degradation: bool, degradation_rate: float, date: datetime.datetime, installation_date: datetime.datetime, lifetime: int) -> float:
+    def get_years_since_install(installation_date: datetime.date, current_date: datetime.date) -> float:
         # Ensure both are 'date' objects
         installation_date = installation_date.date()
         current_date = current_date.date()
@@ -33,7 +33,7 @@ def get_solar_pv_power(PV_area, G_total, T_ambient, efficiency, dynamic_efficien
     
     if degradation:
         years_installed = get_years_since_install(installation_date, date)
-        efficiency = efficiency * (1- (degradation_rate/100) * years_installed)
+        efficiency = efficiency * (1 - (degradation_rate / 100) * years_installed)
 
     if dynamic_efficiency:
         T_cell = T_ambient + ((NOCT - T_ref_NOCT) / ref_irradiance_NOCT) * G_total
@@ -42,7 +42,7 @@ def get_solar_pv_power(PV_area, G_total, T_ambient, efficiency, dynamic_efficien
     P_solar = PV_area * G_total * efficiency
     return P_solar
 
-def add_inverter_efficiency(P_solar, inverter_efficiency):
+def add_inverter_efficiency(P_solar: float, inverter_efficiency: dict) -> tuple:
     for start, end, efficiency in zip(inverter_efficiency["Power_Start_W"], 
                                     inverter_efficiency["Power_End_W"], 
                                     inverter_efficiency["Inverter_Efficiency_%"]):
@@ -52,7 +52,7 @@ def add_inverter_efficiency(P_solar, inverter_efficiency):
     return P_solar_final, inverter_efficiency
     
 
-def solar_pv_benchmark():
+def solar_pv_benchmark() -> None:
     logging.info('Running Solar PV benchmarking')
     num_units = st.session_state.get("solar_pv_num_units")
     installation_dates = st.session_state.get("installation_dates")
@@ -118,8 +118,6 @@ def solar_pv_benchmark():
                     irradiation_data[f'Benchmark_G_Total_{type}'][i] = get_solar_irradiance.with_GHI_DHI(pv_theta_tilt[type_int -1], irradiation_data['GHI'][i], irradiation_data['DHI'][i], 0.2, lat, lon, days_in_year, day_of_year, time_float, True)
                 if Input_DHI and Input_DNI:
                     irradiation_data[f'Benchmark_G_Total_{type}'][i] = get_solar_irradiance.with_DNI_DHI(pv_theta_tilt[type_int -1], irradiation_data['DNI'][i], irradiation_data['DHI'][i], 0.2, lat, lon, days_in_year, day_of_year, time_float, True)
-                if Input_GHI and not Input_DHI and not Input_DNI:
-                    irradiation_data[f'Benchmark_G_Total_{type}'][i] = get_solar_irradiance.with_GHI(pv_theta_tilt[type_int -1], irradiation_data['GHI'][i], 0.2, lat, lon, days_in_year, day_of_year, time_float, True)
     
     for unit in range(num_units):
         irradiation_data[f"Benchmark solar_pv Power Unit {unit+1}"] = None

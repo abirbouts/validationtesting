@@ -7,7 +7,8 @@ import datetime as dt
 import logging
 
 class ERROR():
-    def __init__(self):
+    def __init__(self) -> None:
+
         self.logger = logging.getLogger('MAPE')
         self.logger.info("Starting Error calculation...")
         self.project_name = st.session_state.get("project_name")
@@ -151,7 +152,7 @@ class ERROR():
                 results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results"
                 logging.info(f'The errors for {component_name} on a yearly, monthly and hourly base are saved in {results_data_path}')
 
-    def save_as_csv(self, data, metric_name, component_name):
+    def save_as_csv(self, data: dict, metric_name: str, component_name: str) -> None:
         results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results"
         for granularity, granularity_data in data.items():
             df = pd.DataFrame(granularity_data)
@@ -159,7 +160,7 @@ class ERROR():
             results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results" / f"{component_name}_{metric_name.lower()}_{granularity}.csv"
             df.to_csv(results_data_path)
     
-    def mae(self, df):
+    def mae(self, df: pd.DataFrame) -> tuple[dict[str, float], dict[str, float], dict[str, float], dict[str, float]]:
         # Total MAE
         total_mae = {"Total MAE": np.mean(np.abs(df['model_output'] - df['benchmark_output']))}
 
@@ -177,7 +178,7 @@ class ERROR():
 
         return total_mae, yearly_mae, monthly_mae, hourly_mae
 
-    def rmse(self, df):
+    def rmse(self, df: pd.DataFrame) -> tuple[dict[str, float], dict[str, float], dict[str, float], dict[str, float]]:
         # Total RMSE
         total_rmse = {"Total RMSE": np.sqrt(np.mean((df['model_output'] - df['benchmark_output']) ** 2))}
 

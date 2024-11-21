@@ -3,14 +3,15 @@ from pathlib import Path
 from datetime import datetime
 from validationtesting.validation.parameters import ProjectParameters
 from config.path_manager import PathManager
+from typing import Any
 
-def datetime_to_str(obj):
+def datetime_to_str(obj: datetime) -> str:
     """Convert a datetime object to an ISO string format."""
     if isinstance(obj, datetime):
         return obj.isoformat()
     return obj
 
-def update_nested_settings(settings):
+def update_nested_settings(settings: Any) -> Any:
     """Recursively update nested settings from session state."""
     for field in settings.__fields__:
         if hasattr(settings, field):
@@ -38,7 +39,7 @@ def update_nested_settings(settings):
                 setattr(settings, field, update_nested_settings(value))
     return settings
 
-def save_to_yaml():
+def save_to_yaml() -> None:
     """Load, update, and save the project parameters based on session state."""
     # Get the current project's YAML file path
     project_name = st.session_state.get('project_name')
