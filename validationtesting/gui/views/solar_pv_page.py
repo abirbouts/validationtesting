@@ -7,45 +7,86 @@ import pytz
 @st.dialog("Enter Battery Specifications")
 def enter_specifications(i: int) -> None:
     st.write(f"Enter Battery Specifications for Type {i+1}.")
+
     if len(st.session_state.pv_lifetime) != st.session_state.num_solar_pv_types:
         st.session_state.pv_lifetime = [0] * st.session_state.num_solar_pv_types
-    st.session_state.pv_lifetime[i] = st.number_input(f"Type {i+1} PV lifetime (years):", min_value=0, value=st.session_state.pv_lifetime[i])
+    st.session_state.pv_lifetime[i] = st.number_input(
+        f"Type {i+1} PV lifetime [years]:", 
+        min_value=0, 
+        value=st.session_state.pv_lifetime[i])
 
     if len(st.session_state.pv_area) != st.session_state.num_solar_pv_types:
         st.session_state.pv_area = [0.0] * st.session_state.num_solar_pv_types
-    st.session_state.pv_area[i] = st.number_input(f"Type {i+1} PV area (m^2):", min_value=0.0, value=st.session_state.pv_area[i])
+    st.session_state.pv_area[i] = st.number_input(
+        f"Type {i+1} PV area [m^2]:", 
+        min_value=0.0, 
+        value=st.session_state.pv_area[i])
 
     if len(st.session_state.pv_efficiency) != st.session_state.num_solar_pv_types:
         st.session_state.pv_efficiency = [0.0] * st.session_state.num_solar_pv_types
-    st.session_state.pv_efficiency[i] = st.number_input(f"Type {i+1} PV efficiency (%):", min_value=0.0, value=st.session_state.pv_efficiency[i])
+    st.session_state.pv_efficiency[i] = st.number_input(
+        f"Type {i+1} PV efficiency [%]:", 
+        min_value=0.0, 
+        value=st.session_state.pv_efficiency[i])
 
     if len(st.session_state.pv_theta_tilt) != st.session_state.num_solar_pv_types:
         st.session_state.pv_theta_tilt = [0.0] * st.session_state.num_solar_pv_types
-    st.session_state.pv_theta_tilt[i] = st.number_input(f"Type {i+1} PV tilt angle (°):", min_value=0.0, value=st.session_state.pv_theta_tilt[i])
+    st.session_state.pv_theta_tilt[i] = st.number_input(
+        f"Type {i+1} PV tilt angle [°]:", 
+        min_value=0.0, 
+        value=st.session_state.pv_theta_tilt[i])
+    
     if st.session_state.pv_degradation:
         if len(st.session_state.pv_degradation_rate) != st.session_state.num_solar_pv_types:
             st.session_state.pv_degradation_rate = [0.0] * st.session_state.num_solar_pv_types
-        st.session_state.pv_degradation_rate[i] = st.number_input(f"Type {i+1} PV degradation rate (% per year):", min_value=0.0, value=st.session_state.pv_degradation_rate[i])
+        st.session_state.pv_degradation_rate[i] = st.number_input(
+            f"Type {i+1} PV degradation rate [% per year]:", 
+            min_value=0.0, 
+            value=st.session_state.pv_degradation_rate[i])
+    
     if st.session_state.pv_temperature_dependent_efficiency:
         if len(st.session_state.pv_temperature_coefficient) != st.session_state.num_solar_pv_types:
             st.session_state.pv_temperature_coefficient = [0.0] * st.session_state.num_solar_pv_types
-        st.session_state.pv_temperature_coefficient[i] = st.number_input(f"Type {i+1} PV temperature coefficient ():", min_value=0.0, value=st.session_state.pv_temperature_coefficient[i])
+        st.session_state.pv_temperature_coefficient[i] = st.number_input(
+            f"Type {i+1} PV temperature coefficient [% per °C]:", 
+            min_value=0.0, 
+            value=st.session_state.pv_temperature_coefficient[i])
+        
         if len(st.session_state.pv_T_ref) != st.session_state.num_solar_pv_types:
             st.session_state.pv_T_ref = [0.0] * st.session_state.num_solar_pv_types
-        st.session_state.pv_T_ref[i] = st.number_input(f"Type {i+1} PV refrence Temperature (°C):", min_value=0.0, value=st.session_state.pv_T_ref[i])
+        st.session_state.pv_T_ref[i] = st.number_input(
+            f"Type {i+1} PV refrence Temperature [°C]:", 
+            min_value=0.0, 
+            value=st.session_state.pv_T_ref[i])
+        
         if len(st.session_state.pv_T_ref_NOCT) != st.session_state.num_solar_pv_types:
             st.session_state.pv_T_ref_NOCT = [0.0] * st.session_state.num_solar_pv_types
-        st.session_state.pv_T_ref_NOCT[i] = st.number_input(f"Type {i+1} PV NOCT reference temperature (°C):", min_value=0.0, value=st.session_state.pv_T_ref_NOCT[i])
+        st.session_state.pv_T_ref_NOCT[i] = st.number_input(
+            f"Type {i+1} PV NOCT reference temperature [°C]:", 
+            min_value=0.0, 
+            value=st.session_state.pv_T_ref_NOCT[i])
+        
         if len(st.session_state.pv_NOCT) != st.session_state.num_solar_pv_types:
             st.session_state.pv_NOCT = [0.0] * st.session_state.num_solar_pv_types
-        st.session_state.pv_NOCT[i] = st.number_input(f"Type {i+1} PV NOCT:", min_value=0.0, value=st.session_state.pv_NOCT[i])
+        st.session_state.pv_NOCT[i] = st.number_input(
+            f"Type {i+1} PV NOCT [°C]:", 
+            min_value=0.0, 
+            value=st.session_state.pv_NOCT[i])
+        
         if len(st.session_state.pv_I_ref_NOCT) != st.session_state.num_solar_pv_types:
             st.session_state.pv_I_ref_NOCT = [0.0] * st.session_state.num_solar_pv_types
-        st.session_state.pv_I_ref_NOCT[i] = st.number_input(f"Type {i+1} PV NOCT reference irradiation ():", min_value=0.0, value=st.session_state.pv_I_ref_NOCT[i])
+        st.session_state.pv_I_ref_NOCT[i] = st.number_input(
+            f"Type {i+1} PV NOCT reference irradiation [Wh/m^2]:", 
+            min_value=0.0, 
+            value=st.session_state.pv_I_ref_NOCT[i])
+    
     if not st.session_state.pv_dynamic_inverter_efficiency:
         if len(st.session_state.pv_inverter_efficiency) != st.session_state.num_solar_pv_types:
             st.session_state.pv_inverter_efficiency = [0.0] * st.session_state.num_solar_pv_types
-        st.session_state.pv_inverter_efficiency[i] = st.number_input(f"Type {i+1} inverter efficiency (%):", min_value=0.0, value=st.session_state.pv_inverter_efficiency[i])
+        st.session_state.pv_inverter_efficiency[i] = st.number_input(
+            f"Type {i+1} inverter efficiency [%]:", 
+            min_value=0.0, 
+            value=st.session_state.pv_inverter_efficiency[i])
 
     if st.button("Close"):
         st.rerun()

@@ -32,10 +32,10 @@ class ERROR():
             if component:
                 if st.session_state[f'{component_name}_model_output_scope'] == "Per Unit":
                     for i in range (st.session_state[f'{component_name}_num_units']):
-                        columns_to_keep = ['UTC Time', f'Model {component_name} Power Unit {i+1}', f'Benchmark {component_name} Power Unit {i+1}']
+                        columns_to_keep = ['UTC Time', f'Model {component_name} Energy Unit {i+1} [Wh]', f'Benchmark {component_name} Energy Unit {i+1} [Wh]']
                         temp_df = combined_df[columns_to_keep]
                         temp_df = temp_df.set_index('UTC Time')
-                        temp_df = temp_df.rename(columns={ f'Model {component_name} Power Unit {i+1}': 'model_output', f'Benchmark {component_name} Power Unit {i+1}': 'benchmark_output'})
+                        temp_df = temp_df.rename(columns={ f'Model {component_name} Energy Unit {i+1} [Wh]': 'model_output', f'Benchmark {component_name} Energy Unit {i+1} [Wh]': 'benchmark_output'})
                         total_mae, yearly_mae, monthly_mae, hourly_mae = self.mae(temp_df)
                         total_rmse, yearly_rmse, monthly_rmse, hourly_rmse = self.rmse(temp_df)
                         
@@ -89,10 +89,10 @@ class ERROR():
                         rmse_data["hourly"][f"RMSE Unit {i + 1}"] = list(hourly_rmse.values())
 
                 
-                columns_to_keep = ['UTC Time', f'Model {component_name} Power Total', f'Benchmark {component_name} Power Total']
+                columns_to_keep = ['UTC Time', f'Model {component_name} Energy Total [Wh]', f'Benchmark {component_name} Energy Total [Wh]']
                 temp_df = combined_df[columns_to_keep]
                 temp_df = temp_df.set_index('UTC Time')
-                temp_df = temp_df.rename(columns={ f'Model {component_name} Power Total': 'model_output', f'Benchmark {component_name} Power Total': 'benchmark_output'})
+                temp_df = temp_df.rename(columns={ f'Model {component_name} Energy Total [Wh]': 'model_output', f'Benchmark {component_name} Energy Total [Wh]': 'benchmark_output'})
                 total_mae, yearly_mae, monthly_mae, hourly_mae = self.mae(temp_df)
                 total_rmse, yearly_rmse, monthly_rmse, hourly_rmse = self.rmse(temp_df)
 
@@ -158,7 +158,7 @@ class ERROR():
             df = pd.DataFrame(granularity_data)
             df.index.name = granularity.capitalize()
             results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results" / f"{component_name}_{metric_name.lower()}_{granularity}.csv"
-            df.to_csv(results_data_path)
+            df.to_csv(results_data_path, index=False)
     
     def mae(self, df: pd.DataFrame) -> tuple[dict[str, float], dict[str, float], dict[str, float], dict[str, float]]:
         # Total MAE

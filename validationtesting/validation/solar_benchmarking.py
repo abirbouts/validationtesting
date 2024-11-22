@@ -98,11 +98,11 @@ def solar_pv_benchmark() -> None:
 
     if st.session_state.Input_G_total:
         for type in solar_pv_types:
-            irradiation_data[f"Benchmark_G_Total_{type}"] = irradiation_data["G_Total"]
+            irradiation_data[f"Benchmark G Total {type} [W/m^2]"] = irradiation_data["G Total [W/m^2]"]
 
     else:
         for type in solar_pv_types:
-            irradiation_data[f"Benchmark_G_Total_{type}"] = None
+            irradiation_data[f"Benchmark G Total {type} [W/m^2]"] = None
         
         for i in range(0, len(irradiation_data)):
             date = irradiation_data['UTC Time'][i]
@@ -115,14 +115,14 @@ def solar_pv_benchmark() -> None:
             for type in solar_pv_types:
                 type_int = int(type.replace("Type ", ""))
                 if Input_GHI and Input_DHI:
-                    irradiation_data[f'Benchmark_G_Total_{type}'][i] = get_solar_irradiance.with_GHI_DHI(pv_theta_tilt[type_int -1], irradiation_data['GHI'][i], irradiation_data['DHI'][i], 0.2, lat, lon, days_in_year, day_of_year, time_float, True)
+                    irradiation_data[f'Benchmark G Total {type} [W/m^2]'][i] = get_solar_irradiance.with_GHI_DHI(pv_theta_tilt[type_int -1], irradiation_data['GHI [W/m^2]'][i], irradiation_data['DHI [W/m^2]'][i], 0.2, lat, lon, days_in_year, day_of_year, time_float, True)
                 if Input_DHI and Input_DNI:
-                    irradiation_data[f'Benchmark_G_Total_{type}'][i] = get_solar_irradiance.with_DNI_DHI(pv_theta_tilt[type_int -1], irradiation_data['DNI'][i], irradiation_data['DHI'][i], 0.2, lat, lon, days_in_year, day_of_year, time_float, True)
+                    irradiation_data[f'Benchmark G Total {type} [W/m^2]'][i] = get_solar_irradiance.with_DNI_DHI(pv_theta_tilt[type_int -1], irradiation_data['DNI [W/m^2]'][i], irradiation_data['DHI [W/m^2]'][i], 0.2, lat, lon, days_in_year, day_of_year, time_float, True)
     
     for unit in range(num_units):
-        irradiation_data[f"Benchmark solar_pv Power Unit {unit+1}"] = None
+        irradiation_data[f"Benchmark solar_pv Power Unit {unit+1} [W]"] = None
         
-    irradiation_data[f"Benchmark solar_pv Power Total"] = 0
+    irradiation_data[f'Benchmark solar_pv Power Total [W]'] = 0
     
     for i in range(0, len(irradiation_data)):
         for unit in range(num_units):
@@ -134,8 +134,9 @@ def solar_pv_benchmark() -> None:
                 Temperature = irradiation_data[f'Temperature'][i]
             else:
                 Temperature = None
-            irradiation_data[f'Benchmark solar_pv Power Unit {unit+1}'][i] = get_solar_pv_power(pv_area[type_int-1], irradiation_data[f'Benchmark_G_Total_{type}'][i], Temperature, pv_efficiency[type_int-1], pv_temperature_dependent_efficiency, pv_temperature_coefficient[type_int-1], pv_T_ref[type_int-1], pv_NOCT[type_int-1], pv_T_ref_NOCT[type_int-1], pv_I_ref_NOCT[type_int-1], pv_degradation, pv_degradation_rate[type_int-1], date, installation_dates[unit], pv_lifetime[type_int-1])
-            irradiation_data[f'Benchmark solar_pv Power Total'][i] += irradiation_data[f'Benchmark solar_pv Power Unit {unit+1}'][i]
+            irradiation_data[f'Benchmark solar_pv Power Unit {unit+1} [W]'][i] = get_solar_pv_power(pv_area[type_int-1], irradiation_data[f'Benchmark G Total {type} [W/m^2]'][i], Temperature, pv_efficiency[type_int-1], pv_temperature_dependent_efficiency, pv_temperature_coefficient[type_int-1], pv_T_ref[type_int-1], pv_NOCT[type_int-1], pv_T_ref_NOCT[type_int-1], pv_I_ref_NOCT[type_int-1], pv_degradation, pv_degradation_rate[type_int-1], date, installation_dates[unit], pv_lifetime[type_int-1])
+            irradiation_data[f'Benchmark solar_pv Power Total [W]'][i] += irradiation_data[f'Benchmark solar_pv Power Unit {unit+1} [W]'][i]
     results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "solar_pv_benchmark.csv"
     irradiation_data.to_csv(results_data_path)
+    st.write(irradiation_data)
     logging.info(f"Solar PV Benchmark saved in {results_data_path}")

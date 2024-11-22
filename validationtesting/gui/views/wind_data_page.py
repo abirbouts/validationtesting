@@ -154,8 +154,8 @@ def download_pvgis_wind_data(lat, lon) -> pd.DataFrame:
     tmy_df = pd.DataFrame(tmy_hourly_data)
     st.write(tmy_df)
     # Rename columns
-    tmy_df.rename(columns={'time(UTC)': 'UTC Time', 'WS10m': 'Wind Speed'}, inplace=True)
-    tmy_df = tmy_df[['UTC Time', 'Wind Speed']]
+    tmy_df.rename(columns={'time(UTC)': 'UTC Time', 'WS10m': 'Wind Speed 10.0m [m/s]'}, inplace=True)
+    tmy_df = tmy_df[['UTC Time', 'Wind Speed 10.0m [m/s]']]
 
     # Convert 'UTC Time' column to 'MM-DD HH:MM' format
     tmy_df['UTC Time'] = pd.to_datetime(tmy_df['UTC Time'], format='%Y%m%d:%H%M')
@@ -179,7 +179,7 @@ def wind_data() -> None:
         st.write("Data has been uploaded:")
         project_folder_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / "wind_data.csv"
         wind_data = pd.read_csv(project_folder_path)
-        st.dataframe(wind_data.head(10))
+        st.dataframe(wind_data.head(10), hide_index=True)
         if st.button("Reupload Data"):
             st.session_state.wind_speed_data_uploaded = False
 
@@ -199,8 +199,8 @@ def wind_data() -> None:
                 st.session_state.wind_selected_input_type = st.selectbox(
                     "Chooses ",
                     [
-                        "One Wind Speed Height given", 
-                        "Two Wind Speed Heights given"
+                        "Wind Speed given for one Height", 
+                        "Wind Speed given for two Heights"
                     ]
                 )
                 with st.expander(f"Time", expanded=False):
@@ -208,16 +208,16 @@ def wind_data() -> None:
                     time_data = load_timeseries_csv_with_timezone(uploaded_file, delimiter, decimal, time_format, timezone)
                 with st.expander(f"Data", expanded=False):
                     data_dict = {}
-                    if st.session_state.wind_selected_input_type == "One Wind Speed Height given":
+                    if st.session_state.wind_selected_input_type == "Wind Speed given for one Height":
                         st.session_state.wind_Z1 = st.number_input(
                             "Height 1:", 
                             min_value=0.0, 
                             value=st.session_state.wind_Z1,  # This displays the value from `st.session_state`
                         )
 
-                        wind_data = load_csv_data(uploaded_file, delimiter, decimal, f'Wind Speed {st.session_state.wind_Z1}m')
-                        data_dict[f'Wind Speed {st.session_state.wind_Z1}m'] = wind_data.values.flatten() if wind_data is not None else None
-                    if st.session_state.wind_selected_input_type == "Two Wind Speed Heights given": 
+                        wind_data = load_csv_data(uploaded_file, delimiter, decimal, f'Wind Speed {st.session_state.wind_Z1}m [m/s]')
+                        data_dict[f'Wind Speed {st.session_state.wind_Z1}m [m/s]'] = wind_data.values.flatten() if wind_data is not None else None
+                    if st.session_state.wind_selected_input_type == "Wind Speed given for two Heights": 
                         st.session_state.wind_Z1 = st.number_input(
                             "Height 1:", 
                             min_value=0.0, 
@@ -225,16 +225,16 @@ def wind_data() -> None:
                         )
 
                         # Use the value directly from `st.session_state.wind_Z1`
-                        windz1_data = load_csv_data(uploaded_file, delimiter, decimal, f'Wind Speed {st.session_state.wind_Z1}m')
-                        data_dict[f'Wind Speed {st.session_state.wind_Z1}m'] = windz1_data.values.flatten() if windz1_data is not None else None
+                        windz1_data = load_csv_data(uploaded_file, delimiter, decimal, f'Wind Speed {st.session_state.wind_Z1}m [m/s]')
+                        data_dict[f'Wind Speed {st.session_state.wind_Z1}m [m/s]'] = windz1_data.values.flatten() if windz1_data is not None else None
                         st.session_state.wind_Z0 = st.number_input(f"Height 0:",
                             min_value=0.0, 
                             value=st.session_state.wind_Z0,
                         )
-                        windz0_data = load_csv_data(uploaded_file, delimiter, decimal, f'Wind Speed {st.session_state.wind_Z0}m')
-                        data_dict[f'Wind Speed {st.session_state.wind_Z0}m'] = windz0_data.values.flatten() if windz0_data is not None else None
-                        temperature_data = load_csv_data(uploaded_file, delimiter, decimal, 'Temperature')
-                        data_dict['Temperature'] = temperature_data.values.flatten() if temperature_data is not None else None
+                        windz0_data = load_csv_data(uploaded_file, delimiter, decimal, f'Wind Speed {st.session_state.wind_Z0}m [m/s]')
+                        data_dict[f'Wind Speed {st.session_state.wind_Z0}m [m/s]'] = windz0_data.values.flatten() if windz0_data is not None else None
+                        temperature_data = load_csv_data(uploaded_file, delimiter, decimal, 'Temperature [°C]')
+                        data_dict['Temperature [°C]'] = temperature_data.values.flatten() if temperature_data is not None else None
 
                 if time_data is not None and all(value is not None for value in data_dict.values()):
                     # Combine all data into a single DataFrame (for all elements)
@@ -247,7 +247,7 @@ def wind_data() -> None:
                     st.write(f'Shape of Dataframe: {wind_data.shape}')
 
                     # Display only the first 10 rows of the DataFrame in the UI
-                    st.dataframe(wind_data.head(10))
+                    st.dataframe(wind_data.head(10), hide_index=True)
 
                     # Button to save the full DataFrame
                     if st.button(f"Save Data for", key=f"save_solar_csv"):
@@ -269,18 +269,18 @@ def wind_data() -> None:
                                 "Centers of cities with tall buildings"]
             surface_roughnesses = [0.00001, 0.003, 0.008, 0.01, 0.03, 0.05, 0.10, 0.25, 0.50, 1.50, 3.00]
 
-            st.session_state.surface_type = st.selectbox(
+            st.session_state.wind_surface_type = st.selectbox(
                 "Surface Type:",
                 options=surface_options,
-                index=surface_options.index(st.session_state.surface_type) if st.session_state.surface_type in surface_options else 0, 
+                index=surface_options.index(st.session_state.wind_surface_type) if st.session_state.wind_surface_type in surface_options else 0, 
                 help="Select the type of surface where the wind turbine is installed. This affects the wind speed profile.")
 
-            st.session_state.wind_surface_roughness = surface_roughnesses[surface_options.index(st.session_state.surface_type)]
+            st.session_state.wind_surface_roughness = surface_roughnesses[surface_options.index(st.session_state.wind_surface_type)]
 
             if st.button(f"Download Wind Data from PVGIS", key=f"download_wind_data"):
                 with st.spinner('Downloading data from PVGIS...'):
 
-                    st.session_state.wind_selected_input_type = "One Wind Speed Height given"
+                    st.session_state.wind_selected_input_type = "Wind Speed given for one Height"
                     st.session_state.wind_Z1 = 10.0
 
                     wind_data = download_pvgis_wind_data( 

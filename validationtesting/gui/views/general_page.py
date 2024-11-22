@@ -82,8 +82,13 @@ def general() -> None:
         # Update coordinates based on the last clicked point on the map
         if output and output.get('last_clicked'):
             st.session_state.lat = output['last_clicked']['lat']
-            st.session_state.lon = output['last_clicked']['lng']
-            st.session_state.location = f"{st.session_state.lat}, {st.session_state.lon}"
+            lon = output['last_clicked']['lng']
+            lon = lon % 360
+            if lon > 180:
+                lon = lon - 360
+            if lon < -180:
+                lon = lon + 360
+            st.session_state.lon = lon
 
     elif location_input_method == "Enter Coordinates Manually":
         # Manually input latitude and longitude

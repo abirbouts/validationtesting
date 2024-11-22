@@ -12,7 +12,8 @@ def enter_specifications(i: int) -> None:
     if not st.session_state.generator_dynamic_efficiency:
         if len(st.session_state.generator_efficiency) != st.session_state.num_generator_types:
             st.session_state.generator_efficiency.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_efficiency)))
-        st.session_state.generator_efficiency[i] = st.number_input(f"Generator efficiency (%):", 
+        st.session_state.generator_efficiency[i] = st.number_input(
+            f"Generator efficiency [%]:", 
             min_value=0.0, 
             value=st.session_state.generator_efficiency[i],
             key=f"generator_efficiency_{i}"
@@ -21,7 +22,7 @@ def enter_specifications(i: int) -> None:
     if len(st.session_state.generator_lifetime) != st.session_state.num_generator_types:
         st.session_state.generator_lifetime.extend([0] * (st.session_state.num_generator_types - len(st.session_state.generator_lifetime)))
     st.session_state.generator_lifetime[i] = st.number_input(
-        f"Generator Lifetime (in years):", 
+        f"Generator Lifetime [years]:", 
         min_value=0, 
         value=st.session_state.generator_lifetime[i],
         key=f"generator_lifetime_{i}"
@@ -30,7 +31,7 @@ def enter_specifications(i: int) -> None:
     if len(st.session_state.generator_min_power) != st.session_state.num_generator_types:
         st.session_state.generator_min_power.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_min_power)))
     st.session_state.generator_min_power[i] = st.number_input(
-        f"Minimum Power:", 
+        f"Minimum Power [W]:", 
         min_value=0.0, 
         value=st.session_state.generator_min_power[i],
         key=f"generator_min_power_{i}"
@@ -39,7 +40,7 @@ def enter_specifications(i: int) -> None:
     if len(st.session_state.generator_max_power) != st.session_state.num_generator_types:
         st.session_state.generator_max_power.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_max_power)))
     st.session_state.generator_max_power[i] = st.number_input(
-        f"Maximum Power:", 
+        f"Maximum Power [W]:", 
         min_value=0.0, 
         value=st.session_state.generator_max_power[i],
         key=f"generator_max_power_{i}"
@@ -48,7 +49,7 @@ def enter_specifications(i: int) -> None:
     if len(st.session_state.generator_fuel_lhv) != st.session_state.num_generator_types:
         st.session_state.generator_fuel_lhv.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_fuel_lhv)))
     st.session_state.generator_fuel_lhv[i] = st.number_input(
-        f"Fuel LHV:", 
+        f"Fuel LHV [Wh/l]:", 
         min_value=0.0, 
         value=st.session_state.generator_fuel_lhv[i],
         key=f"generator_fuel_lhv_{i}"
@@ -58,7 +59,7 @@ def enter_specifications(i: int) -> None:
         if len(st.session_state.generator_temporal_degradation_rate) != st.session_state.num_generator_types:
             st.session_state.generator_temporal_degradation_rate.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_temporal_degradation_rate)))
         st.session_state.generator_temporal_degradation_rate[i] = st.number_input(
-            f"Degradation Rate:", 
+            f"Degradation Rate [% per year]:", 
             min_value=0.0, 
             value=st.session_state.generator_temporal_degradation_rate[i],
             key=f"generator_degradation_rate_{i}"

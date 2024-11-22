@@ -32,7 +32,7 @@ def enter_specifications(i: int) -> None:
     if len(st.session_state.battery_capacity) != st.session_state.num_battery_types:
         st.session_state.battery_capacity = [0.0] * st.session_state.num_battery_types
     st.session_state.battery_capacity[i] = st.number_input(
-        f"Battery Capacity (in kWh):", 
+        f"Battery Capacity [Wh]:", 
         min_value=0.0, 
         value=st.session_state.battery_capacity[i],
         key=f"battery_capacity_{i}"
@@ -42,7 +42,7 @@ def enter_specifications(i: int) -> None:
     if len(st.session_state.battery_lifetime) != st.session_state.num_battery_types:
         st.session_state.battery_lifetime = [0] * st.session_state.num_battery_types
     st.session_state.battery_lifetime[i] = st.number_input(
-        f"Battery Lifetime (in years):", 
+        f"Battery Lifetime [years]:", 
         min_value=0, 
         value=st.session_state.battery_lifetime[i],
         key=f"battery_lifetime_{i}"
@@ -52,7 +52,7 @@ def enter_specifications(i: int) -> None:
     if len(st.session_state.battery_initial_soc) != st.session_state.num_battery_types:
         st.session_state.battery_initial_soc = [0.0] * st.session_state.num_battery_types
     st.session_state.battery_initial_soc[i] = st.number_input(
-        f"Initial State of Charge:", 
+        f"Initial State of Charge [%]:", 
         min_value=0.0, 
         max_value=100.0, 
         value=st.session_state.battery_initial_soc[i],
@@ -63,7 +63,7 @@ def enter_specifications(i: int) -> None:
     if len(st.session_state.battery_min_soc) != st.session_state.num_battery_types:
         st.session_state.battery_min_soc = [0.0] * st.session_state.num_battery_types
     st.session_state.battery_min_soc[i] = st.number_input(
-        f"Minimum State of Charge:", 
+        f"Minimum State of Charge [%]:", 
         min_value=0.0, 
         max_value=100.0, 
         value=st.session_state.battery_min_soc[i],
@@ -72,7 +72,7 @@ def enter_specifications(i: int) -> None:
     if len(st.session_state.battery_max_soc) != st.session_state.num_battery_types:
         st.session_state.battery_max_soc = [0.0] * st.session_state.num_battery_types
     st.session_state.battery_max_soc[i] = st.number_input(
-        f"Maximum State of Charge:", 
+        f"Maximum State of Charge [%]:", 
         min_value=0.0, 
         max_value=100.0, 
         value=st.session_state.battery_max_soc[i],
@@ -83,7 +83,7 @@ def enter_specifications(i: int) -> None:
     if len(st.session_state.battery_max_charge_power) < st.session_state.num_battery_types:
         st.session_state.battery_max_charge_power = [0.0] * st.session_state.num_battery_types
     st.session_state.battery_max_charge_power[i] = st.number_input(
-        f"Maximum Charging Power:", 
+        f"Maximum Charging Power [W]:", 
         min_value=0.0, 
         value=st.session_state.battery_max_charge_power[i],
         key=f"battery_max_charge_power_{i}"
@@ -91,7 +91,7 @@ def enter_specifications(i: int) -> None:
     if len(st.session_state.battery_max_discharge_power) != st.session_state.num_battery_types:
         st.session_state.battery_max_discharge_power = [0.0] * st.session_state.num_battery_types
     st.session_state.battery_max_discharge_power[i] = st.number_input(
-        f"Maximum Discharging Power:", 
+        f"Maximum Discharging Power [W]:", 
         min_value=0.0, 
         value=st.session_state.battery_max_discharge_power[i],
         key=f"battery_max_discharge_power_{i}"
@@ -102,7 +102,7 @@ def enter_specifications(i: int) -> None:
         if len(st.session_state.battery_charging_efficiency) != st.session_state.num_battery_types:
             st.session_state.battery_charging_efficiency = [0.0] * st.session_state.num_battery_types
         st.session_state.battery_charging_efficiency[i] = st.number_input(
-            f"Battery Charging Efficiency:", 
+            f"Battery Charging Efficiency [%]:", 
             min_value=0.0, 
             value=st.session_state.battery_charging_efficiency[i],
             key=f"battery_charging_efficiency_{i}"
@@ -110,7 +110,7 @@ def enter_specifications(i: int) -> None:
         if len(st.session_state.battery_discharging_efficiency) != st.session_state.num_battery_types:
             st.session_state.battery_discharging_efficiency = [0.0] * st.session_state.num_battery_types
         st.session_state.battery_discharging_efficiency[i] = st.number_input(
-            f"Battery Discharging Efficiency:", 
+            f"Battery Discharging Efficiency [%]:", 
             min_value=0.0, 
             value=st.session_state.battery_discharging_efficiency[i],
             key=f"battery_discharging_efficiency_{i}"
@@ -119,7 +119,7 @@ def enter_specifications(i: int) -> None:
         if len(st.session_state.battery_roundtrip_efficiency) != st.session_state.num_battery_types:
             st.session_state.battery_roundtrip_efficiency = [0.0] * st.session_state.num_battery_types
         st.session_state.battery_roundtrip_efficiency[i] = st.number_input(
-            f"Battery Roundtrip Efficiency:", 
+            f"Battery Roundtrip Efficiency [%]:", 
             min_value=0.0, 
             value=st.session_state.battery_roundtrip_efficiency[i],
             key=f"battery_roundtrip_efficiency_{i}"
@@ -133,7 +133,7 @@ def enter_specifications(i: int) -> None:
             if len(st.session_state.battery_inverter_efficiency) != st.session_state.num_battery_types:
                 st.session_state.battery_inverter_efficiency = [0.0] * st.session_state.num_battery_types
             st.session_state.battery_inverter_efficiency[i] = st.number_input(
-                f"Inverter Efficiency:", 
+                f"Inverter Efficiency [%]:", 
                 min_value=0.0, 
                 value=st.session_state.battery_inverter_efficiency[i],
                 key=f"battery_inverter_efficiency_{i}"
@@ -145,7 +145,7 @@ def enter_specifications(i: int) -> None:
             st.session_state.battery_temporal_degradation_rate = [0.0] * st.session_state.num_battery_types
             battery_temporal_degradation_rate = [0.0] * st.session_state.num_battery_types
         battery_temporal_degradation_rate[i] = st.number_input(
-            f"Degradation Rate:", 
+            f"Degradation Rate [% per year]:", 
             min_value=0.0, 
             value=st.session_state.battery_temporal_degradation_rate[i],
             key = f"battery_temporal_degradation_rate_{i}"

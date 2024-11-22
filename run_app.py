@@ -18,7 +18,7 @@ from validationtesting.gui.views.wind_page import wind
 from validationtesting.gui.views.wind_data_page import wind_data
 from validationtesting.gui.views.generator_page import generator
 from validationtesting.gui.views.run_page import run_model
-from validationtesting.gui.views.plots_page import generate_plots
+from validationtesting.gui.views.results_page import results
 from validationtesting.gui.views.utils import initialize_session_state
 from validationtesting.utils.savetoyaml import save_to_yaml
 
@@ -144,12 +144,12 @@ if st.session_state.initialized:
             icon="🏃",
         )
 
-        plots_page = st.Page(
-            page=generate_plots,
-            title="Plots Page",
+        results_page = st.Page(
+            page=results,
+            title="Results Page",
             icon="📈",
         )
-        active_pages["Run"] = [run_page, plots_page]
+        active_pages["Run"] = [run_page, results_page]
 
 
 

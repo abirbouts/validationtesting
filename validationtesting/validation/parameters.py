@@ -49,9 +49,6 @@ class GeneralInfo(BaseModel):
         project_description (str): A brief description of the project.
     """
     # Parameters
-    start_date: datetime
-    end_date: datetime
-    location: str
     lat: float
     lon: float
 
@@ -178,7 +175,8 @@ class Wind(BaseModel):
     wind_turbine_type: list
     wind_lifetime: list
     wind_rated_power: list
-    wind_efficiency: list
+    wind_drivetrain_efficiency: list
+    wind_inverter_efficiency: list
     wind_diameter: list
     wind_hub_height: list
     wind_power_curve_uploaded: list

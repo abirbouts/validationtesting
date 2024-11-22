@@ -30,7 +30,7 @@ class Benchmark():
                 else:
                     combined_df = pd.merge(combined_df, resource_df, on="UTC Time", how='outer')
         combined_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results" / f"combined_model_benchmark.csv"
-        combined_df.to_csv(combined_data_path, index=True)
+        combined_df.to_csv(combined_data_path, index=False)
         self.logger.info(f"Combined Benchmark saved in {combined_data_path}")
 
     def create_df(self, resource: str) -> pd.DataFrame:

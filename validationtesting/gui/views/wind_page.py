@@ -1,10 +1,48 @@
 import streamlit as st
 from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state
+from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface
 import datetime as dt
 import pytz
 import pandas as pd
 import numpy as np
+
+def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str) -> pd.DataFrame:
+    """
+    Load CSV data with given delimiter and decimal options.
+    
+    Args:
+        uploaded_file: The uploaded CSV file.
+        delimiter (str): The delimiter used in the CSV file.
+        decimal (str): The decimal separator used in the CSV file.
+        resource_name (Optional[str]): The name of the resource (used for column naming).
+    
+    Returns:
+        Optional[pd.DataFrame]: The loaded DataFrame or None if an error occurred.
+    """
+    try:
+        uploaded_file.seek(0)
+        data = pd.read_csv(uploaded_file, delimiter=delimiter, decimal=decimal)
+        data = data.apply(pd.to_numeric, errors='coerce')
+        
+        if len(data.columns) > 1:
+            selected_column = st.selectbox(f"Select the column representing {parameter}", data.columns)
+            data = data[[selected_column]]
+        
+        data.index = range(1, len(data) + 1)
+        data.index.name = 'Periods'
+        
+        if data.empty:
+            st.warning("No data found in the CSV file. Please check delimiter and decimal settings.")
+        elif data.isnull().values.any():
+            st.warning("Some values could not be converted to numeric. Please check the data.")
+        else:
+            st.success(f"Data loaded successfully using delimiter '{delimiter}' and decimal '{decimal}'")
+        
+        return data
+    except Exception as e:
+        st.error(f"Error during import of CSV data: {e}")
+        return None
+    
 
 @st.dialog("Enter Battery Specifications")
 def enter_specifications(i: int) -> None:
@@ -13,7 +51,7 @@ def enter_specifications(i: int) -> None:
     # Initialize wind_lifetime if necessary
     if len(st.session_state.wind_lifetime) < st.session_state.num_wind_types:
         st.session_state.wind_lifetime.extend([0] * (st.session_state.num_wind_types - len(st.session_state.wind_lifetime)))
-    st.session_state.wind_lifetime[i] = st.number_input(f"Lifetime (years):", 
+    st.session_state.wind_lifetime[i] = st.number_input(f"Lifetime [in years]:", 
         min_value=0, 
         value=st.session_state.wind_lifetime[i],
         key=f"wind_lifetime_{i}"
@@ -22,25 +60,34 @@ def enter_specifications(i: int) -> None:
     # Initialize wind_rated_power if necessary
     if len(st.session_state.wind_rated_power) < st.session_state.num_wind_types:
         st.session_state.wind_rated_power.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_rated_power)))
-    st.session_state.wind_rated_power[i] = st.number_input(f"Rated Power (W):", 
+    st.session_state.wind_rated_power[i] = st.number_input(f"Rated Power [W]:", 
         min_value=0.0, 
         value=st.session_state.wind_rated_power[i],
         key=f"wind_rated_power_{i}"
     )
 
-    # Initialize wind_efficiency if necessary
-    if len(st.session_state.wind_efficiency) < st.session_state.num_wind_types:
-        st.session_state.wind_efficiency.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_efficiency)))
-    st.session_state.wind_efficiency[i] = st.number_input(f"Drive Train Efficiency (%):", 
-        min_value=0.0, 
-        value=st.session_state.wind_efficiency[i],
-        key=f"wind_efficiency_{i}"
+    # Initialize wind_drivetrain_efficiency if necessary
+    if len(st.session_state.wind_drivetrain_efficiency) < st.session_state.num_wind_types:
+        st.session_state.wind_drivetrain_efficiency.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_drivetrain_efficiency)))
+    st.session_state.wind_drivetrain_efficiency[i] = st.number_input(f"Drive Train Efficiency [%]:", 
+        min_value=0.0,
+        value=st.session_state.wind_drivetrain_efficiency[i],
+        key=f"wind_drivetrain_efficiency_{i}"
+    )
+    st.session_state.wind_inverter_efficiency = [98.0]
+    # Initialize wind_inverter_efficiency if necessary
+    if len(st.session_state.wind_inverter_efficiency) < st.session_state.num_wind_types:
+        st.session_state.wind_inverter_efficiency.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_inverter_efficiency)))
+    st.session_state.wind_inverter_efficiency[i] = st.number_input(f"Inverter Efficiency [%]:", 
+        min_value=0.0,
+        value=st.session_state.wind_inverter_efficiency[i],
+        key=f"wind_inverter_efficiency_{i}"
     )
 
     # Initialize wind_hub_height if necessary
     if len(st.session_state.wind_hub_height) < st.session_state.num_wind_types:
         st.session_state.wind_hub_height.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_hub_height)))
-    st.session_state.wind_hub_height[i] = st.number_input(f"Hub Height (m):", 
+    st.session_state.wind_hub_height[i] = st.number_input(f"Hub Height [m]:", 
         min_value=0.0, 
         value=st.session_state.wind_hub_height[i],
         key=f"wind_hub_height_{i}"
@@ -51,7 +98,7 @@ def enter_specifications(i: int) -> None:
         if len(st.session_state.wind_temporal_degradation_rate) < st.session_state.num_wind_types:
             st.session_state.wind_temporal_degradation_rate.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_temporal_degradation_rate)))
         st.session_state.wind_temporal_degradation_rate[i] = st.number_input(
-            f"Degradation Rate:", 
+            f"Degradation Rate [%/year]:", 
             min_value=0.0, 
             value=st.session_state.wind_temporal_degradation_rate[i],
             key=f"wind_degradation_rate_{i}"
@@ -65,19 +112,32 @@ def enter_specifications(i: int) -> None:
         # Load the uploaded CSV file into a DataFrame
         df = pd.read_csv(wind_power_curve_path)
     else:
+        selected_upload_type = st.selectbox(
+            f"Select the way to upload the power curve", 
+            ['Enter manually', 'Upload a CSV file'])
+        if selected_upload_type == 'Enter manually':
         # If no file is uploaded, create a default DataFrame
-        df = pd.DataFrame({
-            'Wind Speed [m/s]': [],
-            'Power (W)': []
-        })
-
-    # Display the table for editing
-    edited_table = st.data_editor(
-        df,
-        num_rows="dynamic",  # Allows adding/removing rows
-        use_container_width=True,
-        key="csv_table_editor"
-    )
+            df = pd.DataFrame({
+                'Wind Speed [m/s]': [],
+                'Power [W]': []
+            })
+        elif selected_upload_type == 'Upload a CSV file':
+            uploaded_file, delimiter, decimal = csv_upload_interface(f"power_curve_{i}")
+            if uploaded_file:
+                data_dict = {}
+                wind_speed_power_curve = load_csv_data(uploaded_file, delimiter, decimal, f'Wind Speed [m/s]')
+                power_power_curve = load_csv_data(uploaded_file, delimiter, decimal, f'Power [W]')
+                data_dict[f'Wind Speed [m/s]'] = wind_speed_power_curve.values.flatten() if wind_speed_power_curve is not None else None
+                data_dict[f'Power [W]'] = power_power_curve.values.flatten() if power_power_curve is not None else None
+                df = pd.DataFrame(data_dict)
+        if st.session_state.wind_power_curve_uploaded[i] or selected_upload_type == 'Enter manually' or uploaded_file:
+            # Display the table for editing
+            edited_table = st.data_editor(
+                df,
+                num_rows="dynamic",  # Allows adding/removing rows
+                use_container_width=True,
+                key="csv_table_editor"
+            )
 
     if st.button("Close"):
         # Store the combined data in session state

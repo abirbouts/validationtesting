@@ -81,33 +81,23 @@ def run_model() -> None:
 
     # Run model button
     if st.button("Validation Testing"):
-        # Create a log file path
-        log_file_path = path_manager.PROJECTS_FOLDER_PATH / project_name / f"{project_name}_solver_log.txt"
+        with st.spinner('Calculating benchmarks and checking for boundary exceedances...'):
+            # Create a log file path
+            log_file_path = path_manager.PROJECTS_FOLDER_PATH / project_name / f"{project_name}_solver_log.txt"
 
-        log_stream = setup_logging(log_file_path)
+            log_stream = setup_logging(log_file_path)
 
-        # Placeholder to display logs dynamically in the UI
-        log_placeholder = st.empty()
+            # Placeholder to display logs dynamically in the UI
+            log_placeholder = st.empty()
 
-        # Initialize and run the Benchmark class
-        if st.session_state.solar_pv or st.session_state.wind:
-            Benchmark()
-            ERROR()
-        if st.session_state.battery:
-            battery_validation_testing()
-        if st.session_state.generator:
-            generator_validation_testing()
+            # Initialize and run the Benchmark class
+            if st.session_state.solar_pv or st.session_state.wind:
+                Benchmark()
+                ERROR()
+            if st.session_state.battery:
+                battery_validation_testing()
+            if st.session_state.generator:
+                generator_validation_testing()
 
-        # Update log display after Benchmark
-        log_placeholder.text_area("Logs", value=log_stream.getvalue(), height=300)
-
-
-    col1, col2 = st.columns([1, 8])
-    with col1:
-        if st.button("Back"):
-            st.session_state.page = "Grid Connection"
-            st.rerun()
-    with col2:
-        if st.button("View Results", disabled=not results_enabled):
-            st.session_state.page = "Results"
-            st.rerun()
+            # Update log display after Benchmark
+            log_placeholder.text_area("Logs", value=log_stream.getvalue(), height=300)
