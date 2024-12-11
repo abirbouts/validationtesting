@@ -38,6 +38,8 @@ class ComponentSelection(BaseModel):
     wind: bool
     generator: bool
     battery: bool
+    technical_validation: bool
+    economic_validation: bool
 
 
 class GeneralInfo(BaseModel):
@@ -49,6 +51,9 @@ class GeneralInfo(BaseModel):
         project_description (str): A brief description of the project.
     """
     # Parameters
+    start_date: datetime
+    end_date: datetime
+    discount_rate: float
     lat: float
     lon: float
 
@@ -71,10 +76,14 @@ class SolarPV(BaseModel):
     same_type: bool
     solar_pv_types: list
     solar_pv_type: list
+    pv_rho: float
     pv_lifetime: list
+    solar_pv_calculation_type: list
     pv_area: list
     pv_efficiency: list
+    pv_nominal_power: list
     pv_theta_tilt: list
+    pv_azimuth: list
     pv_degradation: bool
     pv_degradation_rate: list
     pv_temperature_dependent_efficiency: bool
@@ -85,6 +94,9 @@ class SolarPV(BaseModel):
     pv_I_ref_NOCT: list
     pv_dynamic_inverter_efficiency: bool
     pv_inverter_efficiency: list
+    solar_pv_investment_cost: list
+    solar_pv_maintenance_cost: list
+    solar_pv_curtailment: list
 
 class Battery(BaseModel):
     """
@@ -138,6 +150,8 @@ class Battery(BaseModel):
     battery_efficiency_type: str
     battery_inverter_eff_included: list
     battery_temporal_degradation_rate: list
+    battery_investment_cost: list
+    battery_maintenance_cost: list
 
 class SolarIrradiation(BaseModel):
     """
@@ -188,6 +202,9 @@ class Wind(BaseModel):
     wind_Z0: float
     wind_surface_type: str
     wind_surface_roughness: float
+    wind_investment_cost: list
+    wind_maintenance_cost: list
+    wind_curtailment: list
 
 class Generator(BaseModel):
     """
@@ -231,6 +248,13 @@ class Generator(BaseModel):
     generator_dynamic_efficiency_type: list
     generator_dynamic_efficiency_uploaded: list
     generator_efficiency_formula: list
+    generator_fuel_consumption_scope: list
+    generator_total_fuel_consumption: list
+    generator_investment_cost: list
+    generator_maintenance_cost: list
+    generator_fuel_price: float
+    generator_variable_fuel_price: bool
+    generator_variable_fuel_price_uploaded: bool
 
 class UploadModelOutput(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)

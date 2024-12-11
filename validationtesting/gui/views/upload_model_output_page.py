@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
 from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface
+from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface, time_format_timezone_selectors
 import datetime as dt
 import pytz
 import numpy as np
-import re
+
 
 
 def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str) -> pd.DataFrame:
@@ -89,63 +89,6 @@ def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: st
     except Exception as e:
         st.error(f"Error during import of time from CSV: {e}")
         return None
-
-
-def render_time_format_timezone_selectors() -> tuple:
-    # List of all available time zones with country names
-    timezones_with_countries = ["Universal Time Coordinated - UTC"]
-    # Add all GMT time zones
-    gmt_offsets = range(-12, 15)  # GMT-12 to GMT+14
-    for offset in gmt_offsets:
-        sign = "+" if offset >= 0 else "-"
-        hours = abs(offset)
-        timezones_with_countries.append(f"UTC Offset {sign}{hours:02d}:00")
-    for country_code, timezones in pytz.country_timezones.items():
-        country_name = pytz.country_names[country_code]
-        for timezone in timezones:
-            timezones_with_countries.append(f"{country_name} - {timezone}")
-
-    # Common time formats to select from
-    TIME_FORMATS = [
-        "%Y-%m-%d",                # 2024-01-01
-        "%Y-%m-%d %H:%M:%S",        # 2024-01-01 12:00:00
-        "%d/%m/%Y",                 # 01/01/2024
-        "%d/%m/%Y %H:%M",           # 01/01/2024 12:00
-        "%m/%d/%Y",                 # 01/01/2024
-        "%m/%d/%Y %H:%M:%S",        # 01/01/2024 12:00:00
-        "%H:%M:%S",                 # 12:00:00
-        "%Y-%m-%dT%H:%M:%S",        # 2024-01-01T12:00:00 (ISO format)
-        "Other"                     # Allow user to enter a custom format
-    ]
-
-    col1, col2 = st.columns(2)
-    with col1:
-        # Select time format from common options
-        time_format_choice = st.selectbox("Select the time format of the CSV file:", TIME_FORMATS, index=1)
-
-        # If "Other" is selected, show a text input for custom time format
-        if time_format_choice == "Other":
-            time_format = st.text_input("Enter the custom time format:", value="%Y-%m-%d %H:%M:%S")
-        else:
-            time_format = time_format_choice
-        st.write(f"Selected Time Format: {time_format}")
-
-    with col2:
-        # Select time zone from a comprehensive list with country names
-        selected_timezone_with_country = st.selectbox("Select the time zone of the data (with country):", timezones_with_countries)
-
-        if "UTC Offset" in selected_timezone_with_country:
-            match = re.search(r'[+-]\d+', selected_timezone_with_country)
-            offset = int(match.group())
-            offset = offset * (-1)
-            selected_timezone = f"Etc/GMT{'+' if offset > 0 else ''}{offset}"
-        else:
-            # Extract just the timezone (without the country name)
-            selected_timezone = selected_timezone_with_country.split(' - ')[1]
-        st.write(f"Selected Timezone: {selected_timezone}")
-
-    return time_format, selected_timezone
-
     
 def save_data(resource_data: pd.DataFrame, project_name: str, resource_name: str) -> None:
     """Save the resource data to a CSV file."""    
@@ -156,7 +99,6 @@ def save_data(resource_data: pd.DataFrame, project_name: str, resource_name: str
 def upload_model_output(resource) -> None:
     """Streamlit page for configuring renewable energy technology parameters."""
     st.title(f"Upload the model's {resource} output")
-
     # Initialize session state variables
     initialize_session_state(st.session_state.default_values, 'upload_model_parameters')
     project_name = st.session_state.get("project_name")
@@ -164,7 +106,17 @@ def upload_model_output(resource) -> None:
         st.write("Data has been uploaded:")
         project_folder_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"model_output_{resource}.csv"
         data = pd.read_csv(project_folder_path)
-        st.dataframe(data.head(10), hide_index=True)
+        st.dataframe(data.head(24), hide_index=True)
+        if resource == "generator":
+            if st.session_state[f'{resource}_model_output_scope'] == "Per Unit":
+                for unit in range(st.session_state[f'{resource}_num_units']):
+                    if st.session_state[f'{resource}_model_output_scope'] == "Per Unit":
+                        if st.session_state.generator_fuel_consumption_scope[unit] == 'Total':
+                            st.write(f"Total fuel consumption for unit {unit + 1}: {st.session_state.generator_total_fuel_consumption[unit]} l")
+            elif st.session_state[f'{resource}_model_output_scope'] == 'Total':
+                if st.session_state.generator_fuel_consumption_scope[0] == "Total": 
+                    st.write(f"Total fuel consumption: {st.session_state.generator_total_fuel_consumption[0]} l")
+                    
         if st.button("Reupload Data"):
             st.session_state[f'{resource}_data_uploaded'] = False
 
@@ -175,7 +127,7 @@ def upload_model_output(resource) -> None:
         uploaded_file, delimiter, decimal = csv_upload_interface(f"energy_production_{resource}")
         if uploaded_file:
             with st.expander(f"Time", expanded=False):
-                time_format, timezone = render_time_format_timezone_selectors()
+                time_format, timezone = time_format_timezone_selectors()
                 time_data = load_timeseries_csv_with_timezone(uploaded_file, delimiter, decimal, time_format, timezone)
             with st.expander(f"Data", expanded=False):
                 data_dict = {}
@@ -185,28 +137,55 @@ def upload_model_output(resource) -> None:
                     with col1:
                         energy_output_data = load_csv_data(uploaded_file, delimiter, decimal, f'Total {resource} Energy')
                     with col2:
-                        unit = st.selectbox(
+                        energy_unit = st.selectbox(
                             f"Select the unit of the {resource} output:",
                             ['Wh', 'kWh', 'MWh']
                         ) 
-                    if unit == 'kWh':
+                    if energy_unit == 'kWh':
                         energy_output_data = energy_output_data * 1e3
-                    elif unit == 'MWh':
+                    elif energy_unit == 'MWh':
                         energy_output_data = energy_output_data * 1e6
                     data_dict[f'Model {resource} Energy Total [Wh]'] = energy_output_data.values.flatten() if energy_output_data is not None else None
+                    if resource == "solar_pv" or resource == "wind":
+                        st.session_state[f'{resource}_curtailment'][0] = st.toggle("Curtailment", value=st.session_state[f'{resource}_curtailment'][0])
+                        if st.session_state[f'{resource}_curtailment'][0]:
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.session_state[f'{resource}_curtailment'][0] = st.toggle("Curtailment", value=st.session_state[f'{resource}_curtailment'][0])
+                            with col2:
+                                    curtailment_data = load_csv_data(uploaded_file, delimiter, decimal, 'Model Curtailed {resource} Energy Total [Wh]')
+                                    data_dict[f'Model Curtailed {resource} Energy Total [Wh]'] = curtailment_data.values.flatten() if curtailment_data is not None else None
                     if resource == "generator":
-                        fuel_consumption_data = load_csv_data(uploaded_file, delimiter, decimal, 'Model Fuel Consumption Total [l]')
-                        data_dict['Model Fuel Consumption Total [l]'] = fuel_consumption_data.values.flatten() if fuel_consumption_data is not None else None
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.session_state.generator_fuel_consumption_scope[0] = st.selectbox(
+                                f"Select in what scope the fuel consumption is given:",
+                                ['Total', 'Time Series']
+                            ) 
+                        with col2:
+                            if st.session_state.generator_fuel_consumption_scope[0] == 'Total':
+                                st.session_state.generator_total_fuel_consumption[0] = st.number_input(f"Enter the total fuel consumption [l]:", value=0.0)
+                            if st.session_state.generator_fuel_consumption_scope[0] == 'Time Series':
+                                fuel_consumption_data = load_csv_data(uploaded_file, delimiter, decimal, 'Model Fuel Consumption Total [l]')
+                                data_dict['Model Fuel Consumption Total [l]'] = fuel_consumption_data.values.flatten() if fuel_consumption_data is not None else None
 
                 elif st.session_state[f'{resource}_model_output_scope'] == "Per Unit":
                     total_energy_output = None
                     total_fuel_consumption = None
                     for unit in range(st.session_state[f'{resource}_num_units']):
-                        energy_output_data = load_csv_data(uploaded_file, delimiter, decimal, f'Model {resource} Energy Unit {unit + 1} [Wh]')
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            energy_output_data = load_csv_data(uploaded_file, delimiter, decimal, f'Model {resource} Energy Unit {unit + 1} [Wh]')
+                        with col2:
+                            energy_unit = st.selectbox(
+                                f"Select the unit of the {resource} output:",
+                                ['Wh', 'kWh', 'MWh'],
+                                key=f"unit_key_{unit}"
+                            ) 
                         if energy_output_data is not None:
-                            if unit == 'kWh':
+                            if energy_unit == 'kWh':
                                 energy_output_data = energy_output_data * 1e3
-                            elif unit == 'MWh':
+                            elif energy_unit == 'MWh':
                                 energy_output_data = energy_output_data * 1e6
                             data_dict[f'Model {resource} Energy Unit {unit + 1} [Wh]'] = energy_output_data.values.flatten()
                             # Sum element-wise using NumPy
@@ -214,22 +193,46 @@ def upload_model_output(resource) -> None:
                                 total_energy_output = energy_output_data.values.flatten()
                             else:
                                 total_energy_output = np.add(total_energy_output, energy_output_data.values.flatten())
-
+                        if resource == "solar_pv":
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.session_state[f'{resource}_curtailment'][unit] = st.toggle("Curtailment", value=st.session_state[f'{resource}_curtailment'][unit])
+                            with col2:
+                                if st.session_state[f'{resource}_curtailment'][unit]:
+                                    curtailment_data = load_csv_data(uploaded_file, delimiter, decimal, 'Model Curtailed {resource} Energy Unit {unit + 1} [Wh]')
+                                    data_dict[f'Model Curtailed {resource} Energy Unit {unit + 1} [Wh]'] = curtailment_data.values.flatten() if curtailment_data is not None else None
                         if resource == "generator":
-                            fuel_consumption_data = load_csv_data(uploaded_file, delimiter, decimal, f'Model Fuel Consumption Unit {unit + 1} [l]')
-                            if fuel_consumption_data is not None:
-                                fuel_consumption_flattened = fuel_consumption_data.values.flatten()
-                                data_dict[f'Model Fuel Consumption Unit {unit + 1} [l]'] = fuel_consumption_flattened
-                                # Sum element-wise using NumPy
-                                if total_fuel_consumption is None:
-                                    total_fuel_consumption = fuel_consumption_flattened
-                                else:
-                                    total_fuel_consumption = np.add(total_fuel_consumption, fuel_consumption_flattened)
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.session_state.generator_fuel_consumption_scope[unit] = st.selectbox(
+                                    f"Select in what scope the fuel consumption is given:",
+                                    ['Total', 'Time Series'],
+                                    key=f"generator_fuel_consumption_scope_key_{unit}"
+                                ) 
+                            with col2:
+                                if st.session_state.generator_fuel_consumption_scope[unit] == 'Total':
+                                    # Ensure the session state list has the correct length
+                                    if len(st.session_state.generator_total_fuel_consumption) < st.session_state[f'{resource}_num_units']:
+                                        st.session_state.generator_total_fuel_consumption.extend(
+                                            [0.0] * (st.session_state[f'{resource}_num_units'] - len(st.session_state.generator_total_fuel_consumption))
+                                        )
+                                    st.session_state.generator_total_fuel_consumption[unit] = st.number_input(f"Enter the total fuel consumption {unit + 1} [l]:", value=0.0)
+                                if st.session_state.generator_fuel_consumption_scope[unit] == 'Time Series':
+                                    fuel_consumption_data = load_csv_data(uploaded_file, delimiter, decimal, f'Model Fuel Consumption Unit {unit + 1} [l]')
+                                    if fuel_consumption_data is not None:
+                                        fuel_consumption_flattened = fuel_consumption_data.values.flatten()
+                                        data_dict[f'Model Fuel Consumption Unit {unit + 1} [l]'] = fuel_consumption_flattened
+                                        # Sum element-wise using NumPy
+                                        if total_fuel_consumption is None:
+                                            total_fuel_consumption = fuel_consumption_flattened
+                                        else:
+                                            total_fuel_consumption = np.add(total_fuel_consumption, fuel_consumption_flattened)
 
                     # Assign the total values after processing all units
                     data_dict[f'Model {resource} Energy Total [Wh]'] = total_energy_output
                     if resource == "generator":
-                        data_dict[f'Model Fuel Consumption Total [Wh]'] = total_fuel_consumption
+                        if st.session_state.generator_fuel_consumption_scope[unit] == 'Time Series':
+                            data_dict[f'Model Fuel Consumption Total [l]'] = total_fuel_consumption
 
                 # Combine all data into a DataFrame if time data and data dictionary are available
                 if time_data is not None and all(value is not None for value in data_dict.values()):

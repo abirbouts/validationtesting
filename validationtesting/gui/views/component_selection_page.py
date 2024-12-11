@@ -17,8 +17,15 @@ def component_selection() -> None:
     # Initialize session state variables
     initialize_session_state(st.session_state.default_values, 'component_selection')
     
-    # Toggle buttons for selecting components
-    st.session_state.solar_pv = st.toggle("☀️Solar Photovoltaics", value=st.session_state.solar_pv)
-    st.session_state.wind = st.toggle("🌀Wind Energy", value=st.session_state.wind)
-    st.session_state.generator = st.toggle("⚙️Generator", value=st.session_state.generator)
-    st.session_state.battery = st.toggle("🔋Battery", value=st.session_state.battery)
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Toggle buttons for selecting components
+        st.session_state.solar_pv = st.toggle("☀️Solar Photovoltaics", value=st.session_state.solar_pv)
+        st.session_state.wind = st.toggle("🌀Wind Energy", value=st.session_state.wind)
+        st.session_state.generator = st.toggle("⚙️Generator", value=st.session_state.generator)
+        st.session_state.battery = st.toggle("🔋Battery", value=st.session_state.battery)
+    
+    with col2:
+        st.session_state.technical_validation = st.toggle("⚙️Technical Validation", value=st.session_state.technical_validation)
+        st.session_state.economic_validation = st.toggle("💵Economic Validation", value=st.session_state.economic_validation) 

@@ -11,9 +11,10 @@ from datetime import datetime
 
 from validationtesting.validation.parameters import ProjectParameters
 from validationtesting.validation.benchmark import Benchmark
-from validationtesting.validation.benchmark_validation_testing import ERROR
-from validationtesting.validation.battery_validation_testing import battery_validation_testing
-from validationtesting.validation.generator_validation_testing import generator_validation_testing
+from validationtesting.validation.error_calculation import ERROR
+from validationtesting.validation.battery_validation import battery_validation_testing
+from validationtesting.validation.generator_validation import generator_validation_testing
+from validationtesting.validation.cost_validation import cost_validation
 from config.path_manager import PathManager
 
 # Function to set up logging to both a file and StringIO stream
@@ -73,31 +74,45 @@ def run_model() -> None:
         return
 
 
-    st.subheader("Validation Testing")
-    st.write("""
-    Validation Testing:
-             
-    """)
+    if st.session_state.technical_validation:
+        st.subheader("Technical Validation")
+        st.write("""
+        Validation Testing:
+                
+        """)
 
-    # Run model button
-    if st.button("Validation Testing"):
-        with st.spinner('Calculating benchmarks and checking for boundary exceedances...'):
-            # Create a log file path
-            log_file_path = path_manager.PROJECTS_FOLDER_PATH / project_name / f"{project_name}_solver_log.txt"
+        # Run model button
+        if st.button("Start Technical Validation"):
+            with st.spinner('Calculating benchmarks and checking for boundary exceedances...'):
+                # Create a log file path
+                start_time = datetime.now()
 
-            log_stream = setup_logging(log_file_path)
+                # Initialize and run the Benchmark class
+                if st.session_state.solar_pv or st.session_state.wind:
+                    Benchmark()
+                    ERROR()
+                if st.session_state.battery:
+                    battery_validation_testing()
+                if st.session_state.generator:
+                    generator_validation_testing()
+                end_time = datetime.now()
+                calculation_time = end_time - start_time
+                st.success(f"Technical Validation Complete, Calculation Time = {calculation_time.total_seconds()} seconds")
 
-            # Placeholder to display logs dynamically in the UI
-            log_placeholder = st.empty()
 
-            # Initialize and run the Benchmark class
-            if st.session_state.solar_pv or st.session_state.wind:
-                Benchmark()
-                ERROR()
-            if st.session_state.battery:
-                battery_validation_testing()
-            if st.session_state.generator:
-                generator_validation_testing()
+    if st.session_state.economic_validation:
+        st.subheader("Economic Validation")
+        st.write("""
+        Validation Testing:
+                
+        """)
 
-            # Update log display after Benchmark
-            log_placeholder.text_area("Logs", value=log_stream.getvalue(), height=300)
+        # Run model button
+        if st.button("Start Economic Validation"):
+            with st.spinner('Calculating benchmarks...'):
+                # Create a log file path
+                start_time = datetime.now()
+                cost_validation()
+                end_time = datetime.now()
+                calculation_time = end_time - start_time
+                st.success(f"Economic Validation Complete, Calculation Time = {calculation_time.total_seconds()} seconds")

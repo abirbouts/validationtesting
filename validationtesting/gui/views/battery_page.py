@@ -18,7 +18,7 @@ Functions:
 
 import streamlit as st
 from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state
+from validationtesting.gui.views.utils import initialize_session_state, timezone_selector
 import datetime as dt
 import pytz
 import numpy as np
@@ -27,16 +27,6 @@ import numpy as np
 @st.dialog("Enter Battery Specifications")
 def enter_specifications(i: int) -> None:
     st.write(f"Enter Battery Specifications for Type {i+1}.")
-
-    # Battery Capacity
-    if len(st.session_state.battery_capacity) != st.session_state.num_battery_types:
-        st.session_state.battery_capacity = [0.0] * st.session_state.num_battery_types
-    st.session_state.battery_capacity[i] = st.number_input(
-        f"Battery Capacity [Wh]:", 
-        min_value=0.0, 
-        value=st.session_state.battery_capacity[i],
-        key=f"battery_capacity_{i}"
-    )
 
     # Battery Lifetime
     if len(st.session_state.battery_lifetime) != st.session_state.num_battery_types:
@@ -48,137 +38,144 @@ def enter_specifications(i: int) -> None:
         key=f"battery_lifetime_{i}"
     )
 
-    # Battery Initial State of Charge
-    if len(st.session_state.battery_initial_soc) != st.session_state.num_battery_types:
-        st.session_state.battery_initial_soc = [0.0] * st.session_state.num_battery_types
-    st.session_state.battery_initial_soc[i] = st.number_input(
-        f"Initial State of Charge [%]:", 
-        min_value=0.0, 
-        max_value=100.0, 
-        value=st.session_state.battery_initial_soc[i],
-        key=f"battery_initial_soc_{i}"
-    )
-
-    # Battery Minimum and Maximum State of Charge
-    if len(st.session_state.battery_min_soc) != st.session_state.num_battery_types:
-        st.session_state.battery_min_soc = [0.0] * st.session_state.num_battery_types
-    st.session_state.battery_min_soc[i] = st.number_input(
-        f"Minimum State of Charge [%]:", 
-        min_value=0.0, 
-        max_value=100.0, 
-        value=st.session_state.battery_min_soc[i],
-        key=f"battery_min_soc_{i}"
-    )
-    if len(st.session_state.battery_max_soc) != st.session_state.num_battery_types:
-        st.session_state.battery_max_soc = [0.0] * st.session_state.num_battery_types
-    st.session_state.battery_max_soc[i] = st.number_input(
-        f"Maximum State of Charge [%]:", 
-        min_value=0.0, 
-        max_value=100.0, 
-        value=st.session_state.battery_max_soc[i],
-        key=f"battery_max_soc_{i}"
-    )
-    
-    # Battery Maximum Charging and Discharging Power
-    if len(st.session_state.battery_max_charge_power) < st.session_state.num_battery_types:
-        st.session_state.battery_max_charge_power = [0.0] * st.session_state.num_battery_types
-    st.session_state.battery_max_charge_power[i] = st.number_input(
-        f"Maximum Charging Power [W]:", 
-        min_value=0.0, 
-        value=st.session_state.battery_max_charge_power[i],
-        key=f"battery_max_charge_power_{i}"
-    )
-    if len(st.session_state.battery_max_discharge_power) != st.session_state.num_battery_types:
-        st.session_state.battery_max_discharge_power = [0.0] * st.session_state.num_battery_types
-    st.session_state.battery_max_discharge_power[i] = st.number_input(
-        f"Maximum Discharging Power [W]:", 
-        min_value=0.0, 
-        value=st.session_state.battery_max_discharge_power[i],
-        key=f"battery_max_discharge_power_{i}"
-    )
-
-    # Battery Efficiency (either Seperate Charging and Discharging Efficiency or Roundtrip Efficiency)
-    if st.session_state.battery_efficiency_type == 'Seperate Charging and Discharging Efficiency':
-        if len(st.session_state.battery_charging_efficiency) != st.session_state.num_battery_types:
-            st.session_state.battery_charging_efficiency = [0.0] * st.session_state.num_battery_types
-        st.session_state.battery_charging_efficiency[i] = st.number_input(
-            f"Battery Charging Efficiency [%]:", 
+    if st.session_state.technical_validation:
+        # Battery Capacity
+        if len(st.session_state.battery_capacity) != st.session_state.num_battery_types:
+            st.session_state.battery_capacity = [0.0] * st.session_state.num_battery_types
+        st.session_state.battery_capacity[i] = st.number_input(
+            f"Battery Capacity [Wh]:", 
             min_value=0.0, 
-            value=st.session_state.battery_charging_efficiency[i],
-            key=f"battery_charging_efficiency_{i}"
+            value=st.session_state.battery_capacity[i],
+            key=f"battery_capacity_{i}"
         )
-        if len(st.session_state.battery_discharging_efficiency) != st.session_state.num_battery_types:
-            st.session_state.battery_discharging_efficiency = [0.0] * st.session_state.num_battery_types
-        st.session_state.battery_discharging_efficiency[i] = st.number_input(
-            f"Battery Discharging Efficiency [%]:", 
-            min_value=0.0, 
-            value=st.session_state.battery_discharging_efficiency[i],
-            key=f"battery_discharging_efficiency_{i}"
-        )
-    else:
-        if len(st.session_state.battery_roundtrip_efficiency) != st.session_state.num_battery_types:
-            st.session_state.battery_roundtrip_efficiency = [0.0] * st.session_state.num_battery_types
-        st.session_state.battery_roundtrip_efficiency[i] = st.number_input(
-            f"Battery Roundtrip Efficiency [%]:", 
-            min_value=0.0, 
-            value=st.session_state.battery_roundtrip_efficiency[i],
-            key=f"battery_roundtrip_efficiency_{i}"
-        )
-        st.session_state.battery_charging_efficiency[i] = float(np.sqrt(st.session_state.battery_roundtrip_efficiency[i]))
-        st.session_state.battery_discharging_efficiency[i] = float(np.sqrt(st.session_state.battery_roundtrip_efficiency[i]))
 
-    # Battery Inverter Efficiency (if needed)
-    if not st.session_state.battery_inverter_eff_included:
-        if not st.session_state.battery_dynamic_inverter_efficiency:
-            if len(st.session_state.battery_inverter_efficiency) != st.session_state.num_battery_types:
-                st.session_state.battery_inverter_efficiency = [0.0] * st.session_state.num_battery_types
-            st.session_state.battery_inverter_efficiency[i] = st.number_input(
-                f"Inverter Efficiency [%]:", 
+        # Battery Initial State of Charge
+        if len(st.session_state.battery_initial_soc) != st.session_state.num_battery_types:
+            st.session_state.battery_initial_soc = [0.0] * st.session_state.num_battery_types
+        st.session_state.battery_initial_soc[i] = st.number_input(
+            f"Initial State of Charge [%]:", 
+            min_value=0.0, 
+            max_value=100.0, 
+            value=st.session_state.battery_initial_soc[i],
+            key=f"battery_initial_soc_{i}"
+        )
+
+        # Battery Minimum and Maximum State of Charge
+        if len(st.session_state.battery_min_soc) != st.session_state.num_battery_types:
+            st.session_state.battery_min_soc = [0.0] * st.session_state.num_battery_types
+        st.session_state.battery_min_soc[i] = st.number_input(
+            f"Minimum State of Charge [%]:", 
+            min_value=0.0, 
+            max_value=100.0, 
+            value=st.session_state.battery_min_soc[i],
+            key=f"battery_min_soc_{i}"
+        )
+        if len(st.session_state.battery_max_soc) != st.session_state.num_battery_types:
+            st.session_state.battery_max_soc = [0.0] * st.session_state.num_battery_types
+        st.session_state.battery_max_soc[i] = st.number_input(
+            f"Maximum State of Charge [%]:", 
+            min_value=0.0, 
+            max_value=100.0, 
+            value=st.session_state.battery_max_soc[i],
+            key=f"battery_max_soc_{i}"
+        )
+        
+        # Battery Maximum Charging and Discharging Power
+        if len(st.session_state.battery_max_charge_power) < st.session_state.num_battery_types:
+            st.session_state.battery_max_charge_power = [0.0] * st.session_state.num_battery_types
+        st.session_state.battery_max_charge_power[i] = st.number_input(
+            f"Maximum Charging Power [W]:", 
+            min_value=0.0, 
+            value=st.session_state.battery_max_charge_power[i],
+            key=f"battery_max_charge_power_{i}"
+        )
+        if len(st.session_state.battery_max_discharge_power) != st.session_state.num_battery_types:
+            st.session_state.battery_max_discharge_power = [0.0] * st.session_state.num_battery_types
+        st.session_state.battery_max_discharge_power[i] = st.number_input(
+            f"Maximum Discharging Power [W]:", 
+            min_value=0.0, 
+            value=st.session_state.battery_max_discharge_power[i],
+            key=f"battery_max_discharge_power_{i}"
+        )
+
+        # Battery Efficiency (either Seperate Charging and Discharging Efficiency or Roundtrip Efficiency)
+        if st.session_state.battery_efficiency_type == 'Seperate Charging and Discharging Efficiency':
+            if len(st.session_state.battery_charging_efficiency) != st.session_state.num_battery_types:
+                st.session_state.battery_charging_efficiency = [0.0] * st.session_state.num_battery_types
+            st.session_state.battery_charging_efficiency[i] = st.number_input(
+                f"Battery Charging Efficiency [%]:", 
                 min_value=0.0, 
-                value=st.session_state.battery_inverter_efficiency[i],
-                key=f"battery_inverter_efficiency_{i}"
+                value=st.session_state.battery_charging_efficiency[i],
+                key=f"battery_charging_efficiency_{i}"
             )
+            if len(st.session_state.battery_discharging_efficiency) != st.session_state.num_battery_types:
+                st.session_state.battery_discharging_efficiency = [0.0] * st.session_state.num_battery_types
+            st.session_state.battery_discharging_efficiency[i] = st.number_input(
+                f"Battery Discharging Efficiency [%]:", 
+                min_value=0.0, 
+                value=st.session_state.battery_discharging_efficiency[i],
+                key=f"battery_discharging_efficiency_{i}"
+            )
+        else:
+            if len(st.session_state.battery_roundtrip_efficiency) != st.session_state.num_battery_types:
+                st.session_state.battery_roundtrip_efficiency = [0.0] * st.session_state.num_battery_types
+            st.session_state.battery_roundtrip_efficiency[i] = st.number_input(
+                f"Battery Roundtrip Efficiency [%]:", 
+                min_value=0.0, 
+                value=st.session_state.battery_roundtrip_efficiency[i],
+                key=f"battery_roundtrip_efficiency_{i}"
+            )
+            st.session_state.battery_charging_efficiency[i] = float(np.sqrt(st.session_state.battery_roundtrip_efficiency[i]))
+            st.session_state.battery_discharging_efficiency[i] = float(np.sqrt(st.session_state.battery_roundtrip_efficiency[i]))
 
-    # Battery Temporal Degradation Rate (if needed)
-    if st.session_state.battery_temporal_degradation:
-        if len(st.session_state.battery_temporal_degradation_rate) != st.session_state.num_battery_types:
-            st.session_state.battery_temporal_degradation_rate = [0.0] * st.session_state.num_battery_types
-            battery_temporal_degradation_rate = [0.0] * st.session_state.num_battery_types
-        battery_temporal_degradation_rate[i] = st.number_input(
-            f"Degradation Rate [% per year]:", 
+        # Battery Inverter Efficiency (if needed)
+        if not st.session_state.battery_inverter_eff_included:
+            if not st.session_state.battery_dynamic_inverter_efficiency:
+                if len(st.session_state.battery_inverter_efficiency) != st.session_state.num_battery_types:
+                    st.session_state.battery_inverter_efficiency = [0.0] * st.session_state.num_battery_types
+                st.session_state.battery_inverter_efficiency[i] = st.number_input(
+                    f"Inverter Efficiency [%]:", 
+                    min_value=0.0, 
+                    value=st.session_state.battery_inverter_efficiency[i],
+                    key=f"battery_inverter_efficiency_{i}"
+                )
+
+        # Battery Temporal Degradation Rate (if needed)
+        if st.session_state.battery_temporal_degradation:
+            if len(st.session_state.battery_temporal_degradation_rate) != st.session_state.num_battery_types:
+                st.session_state.battery_temporal_degradation_rate = [0.0] * st.session_state.num_battery_types
+                battery_temporal_degradation_rate = [0.0] * st.session_state.num_battery_types
+            battery_temporal_degradation_rate[i] = st.number_input(
+                f"Degradation Rate [% per year]:", 
+                min_value=0.0, 
+                value=st.session_state.battery_temporal_degradation_rate[i],
+                key = f"battery_temporal_degradation_rate_{i}"
+            )
+            st.session_state.battery_temporal_degradation_rate[i] = battery_temporal_degradation_rate[i]
+    
+    if st.session_state.economic_validation:
+        # Battery Investment Cost
+        if len(st.session_state.battery_investment_cost) != st.session_state.num_battery_types:
+            st.session_state.battery_investment_cost = [0.0] * st.session_state.num_battery_types
+        st.session_state.battery_investment_cost[i] = st.number_input(
+            f"Investment Cost [USD]:", 
             min_value=0.0, 
-            value=st.session_state.battery_temporal_degradation_rate[i],
-            key = f"battery_temporal_degradation_rate_{i}"
+            value=st.session_state.battery_investment_cost[i],
+            key=f"battery_investment_cost_{i}"
         )
-        st.session_state.battery_temporal_degradation_rate[i] = battery_temporal_degradation_rate[i]
+
+        # Battery Yearly Operation and Maintenance Cost
+        if len(st.session_state.battery_maintenance_cost) != st.session_state.num_battery_types:
+            st.session_state.battery_maintenance_cost = [0.0] * st.session_state.num_battery_types
+        st.session_state.battery_maintenance_cost[i] = st.number_input(
+            f"Yearly Operation and Maintenance Cost [USD/year]:", 
+            min_value=0.0, 
+            value=st.session_state.battery_maintenance_cost[i],
+            key=f"battery_maintenance_cost_{i}"
+        )
 
     if st.button("Close"):
         st.rerun()
-
-# Function to render a time zone selector
-def render_timezone_selector() -> str:
-    # List of all available time zones with country names
-    timezones_with_countries = ["Universal Time Coordinated - UTC"]  # Manually add UTC
-    # Manually add all GMT time zones
-    for offset in range(-12, 15):
-        if offset == 0:
-            timezones_with_countries.append("Greenwich Mean Time - GMT")
-        else:
-            sign = "+" if offset > 0 else "-"
-            timezones_with_countries.append(f"Greenwich Mean Time {sign}{abs(offset):02d}:00 - GMT{sign}{abs(offset):02d}:00")
-    # Add all other time zones with country names
-    for country_code, timezones in pytz.country_timezones.items():
-        country_name = pytz.country_names[country_code]
-        for timezone in timezones:
-            timezones_with_countries.append(f"{country_name} - {timezone}")
-
-    # Select time zone from a comprehensive list with country names
-    selected_timezone_with_country = st.selectbox("Select the time zone for the installation dates:", timezones_with_countries)
-
-    # Extract just the timezone (without the country name)
-    selected_timezone = selected_timezone_with_country.split(' - ')[1]
-
-    return selected_timezone
 
 # Function to convert installation dates to UTC
 def convert_dates_to_utc(installation_dates: list[dt.datetime], timezone_str: str) -> list[dt.datetime]:
@@ -219,7 +216,7 @@ def battery() -> None:
         st.session_state.battery_installation_dates = [dt.datetime.now() for _ in range(st.session_state.battery_num_units)]
     # Installation dates selection
     with st.expander(f"Installation Dates", expanded=False):
-        st.session_state.selected_timezone_battery = render_timezone_selector()
+        st.session_state.selected_timezone_battery = timezone_selector()
         if st.session_state.battery_num_units > 1:
             # Checkbox to determine if the installation date is the same for all units
             st.session_state.battery_same_date = st.checkbox("Same installation date for all units", 
@@ -327,41 +324,43 @@ def battery() -> None:
         st.session_state.battery_types = ['Type 1']        
         st.session_state.battery_type[0] = st.session_state.battery_types[0]
 
-    # Let choose Battery Efficiency option
-    options = ['Seperate Charging and Discharging Efficiency', 'Roundtrip Efficiency']
-    st.session_state.battery_efficiency_type = st.selectbox(
-        'Battery Efficiency:',
-        options,
-        index = options.index(st.session_state.battery_efficiency_type))
 
-    # Let choose what was included in the calculations    
-    options = ['Temporal battery degradation', 'Cyclic battery degradation', 'Inverter efficiency included in the battery efficiency']
+    if st.session_state.technical_validation:
+        # Let choose Battery Efficiency option
+        options = ['Seperate Charging and Discharging Efficiency', 'Roundtrip Efficiency']
+        st.session_state.battery_efficiency_type = st.selectbox(
+            'Battery Efficiency:',
+            options,
+            index = options.index(st.session_state.battery_efficiency_type))
 
-    if st.session_state.battery_inverter_eff_included:
-        options.append('Dynamic inverter efficiency')
-    options_selected = []
-    if st.session_state.battery_temporal_degradation:
-        options_selected.append('Temporal battery degradation')
-    if st.session_state.battery_cyclic_degradation:
-        options_selected.append('Cyclic battery degradation')
-    if st.session_state.battery_inverter_eff_included:
-        options_selected.append('Inverter efficiency included in the battery efficiency')
-    if st.session_state.battery_dynamic_inverter_efficiency:
-        options_selected.append('Dynamic inverter efficiency')
-    
-    included = st.pills(
-        "Choose what was included in your calculations:", 
-        options=options,
-        default=options_selected,
-        selection_mode='multi')
+        # Let choose what was included in the calculations    
+        options = ['Temporal battery degradation', 'Cyclic battery degradation', 'Inverter efficiency included in the battery efficiency']
 
-    st.session_state.battery_temporal_degradation = 'Temporal battery degradation' in included
-    st.session_state.battery_cyclic_degradation = 'Cyclic battery degradation' in included
-    st.session_state.battery_inverter_eff_included = 'Inverter efficiency included in the battery efficiency' in included
-    if st.session_state.battery_inverter_eff_included:
-        st.session_state.battery_dynamic_inverter_efficiency = 'Dynamic inverter efficiency' in included
-    else:
-        st.session_state.battery_dynamic_inverter_efficiency = False
+        if st.session_state.battery_inverter_eff_included:
+            options.append('Dynamic inverter efficiency')
+        options_selected = []
+        if st.session_state.battery_temporal_degradation:
+            options_selected.append('Temporal battery degradation')
+        if st.session_state.battery_cyclic_degradation:
+            options_selected.append('Cyclic battery degradation')
+        if st.session_state.battery_inverter_eff_included:
+            options_selected.append('Inverter efficiency included in the battery efficiency')
+        if st.session_state.battery_dynamic_inverter_efficiency:
+            options_selected.append('Dynamic inverter efficiency')
+        
+        included = st.pills(
+            "Choose what was included in your calculations:", 
+            options=options,
+            default=options_selected,
+            selection_mode='multi')
+
+        st.session_state.battery_temporal_degradation = 'Temporal battery degradation' in included
+        st.session_state.battery_cyclic_degradation = 'Cyclic battery degradation' in included
+        st.session_state.battery_inverter_eff_included = 'Inverter efficiency included in the battery efficiency' in included
+        if st.session_state.battery_inverter_eff_included:
+            st.session_state.battery_dynamic_inverter_efficiency = 'Dynamic inverter efficiency' in included
+        else:
+            st.session_state.battery_dynamic_inverter_efficiency = False
 
 
     # Render the battery specifications for each type

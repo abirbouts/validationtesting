@@ -1,12 +1,12 @@
 import streamlit as st
 from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state
+from validationtesting.gui.views.utils import initialize_session_state, timezone_selector
 import datetime as dt
 import pytz
 
-@st.dialog("Enter Battery Specifications")
+@st.dialog("Enter Solar PV Specifications")
 def enter_specifications(i: int) -> None:
-    st.write(f"Enter Battery Specifications for Type {i+1}.")
+    st.write(f"Enter Solar PV Specifications for Type {i+1}.")
 
     if len(st.session_state.pv_lifetime) != st.session_state.num_solar_pv_types:
         st.session_state.pv_lifetime = [0] * st.session_state.num_solar_pv_types
@@ -15,97 +15,129 @@ def enter_specifications(i: int) -> None:
         min_value=0, 
         value=st.session_state.pv_lifetime[i])
 
-    if len(st.session_state.pv_area) != st.session_state.num_solar_pv_types:
-        st.session_state.pv_area = [0.0] * st.session_state.num_solar_pv_types
-    st.session_state.pv_area[i] = st.number_input(
-        f"Type {i+1} PV area [m^2]:", 
-        min_value=0.0, 
-        value=st.session_state.pv_area[i])
+    if st.session_state.technical_validation:
+        st.session_state.solar_pv_calculation_type[i] = st.selectbox(
+            f"Using what was the Solar PV energy calculated?",
+            ['Area and Efficiency', 'Nominal Power'],
+            index=['Area and Efficiency', 'Nominal Power'].index(st.session_state.solar_pv_calculation_type[i]),
+            key=f"calculation_type_select_{i}"
+        )
 
-    if len(st.session_state.pv_efficiency) != st.session_state.num_solar_pv_types:
-        st.session_state.pv_efficiency = [0.0] * st.session_state.num_solar_pv_types
-    st.session_state.pv_efficiency[i] = st.number_input(
-        f"Type {i+1} PV efficiency [%]:", 
-        min_value=0.0, 
-        value=st.session_state.pv_efficiency[i])
 
-    if len(st.session_state.pv_theta_tilt) != st.session_state.num_solar_pv_types:
-        st.session_state.pv_theta_tilt = [0.0] * st.session_state.num_solar_pv_types
-    st.session_state.pv_theta_tilt[i] = st.number_input(
-        f"Type {i+1} PV tilt angle [°]:", 
-        min_value=0.0, 
-        value=st.session_state.pv_theta_tilt[i])
-    
-    if st.session_state.pv_degradation:
-        if len(st.session_state.pv_degradation_rate) != st.session_state.num_solar_pv_types:
-            st.session_state.pv_degradation_rate = [0.0] * st.session_state.num_solar_pv_types
-        st.session_state.pv_degradation_rate[i] = st.number_input(
-            f"Type {i+1} PV degradation rate [% per year]:", 
-            min_value=0.0, 
-            value=st.session_state.pv_degradation_rate[i])
-    
-    if st.session_state.pv_temperature_dependent_efficiency:
-        if len(st.session_state.pv_temperature_coefficient) != st.session_state.num_solar_pv_types:
-            st.session_state.pv_temperature_coefficient = [0.0] * st.session_state.num_solar_pv_types
-        st.session_state.pv_temperature_coefficient[i] = st.number_input(
-            f"Type {i+1} PV temperature coefficient [% per °C]:", 
-            min_value=0.0, 
-            value=st.session_state.pv_temperature_coefficient[i])
+
+        if st.session_state.solar_pv_calculation_type[i] == 'Area and Efficiency':
+            if len(st.session_state.pv_area) != st.session_state.num_solar_pv_types:
+                st.session_state.pv_area = [0.0] * st.session_state.num_solar_pv_types
+            st.session_state.pv_area[i] = st.number_input(
+                f"Type {i+1} PV area [m^2]:", 
+                min_value=0.0, 
+                value=st.session_state.pv_area[i])
+
+            if len(st.session_state.pv_efficiency) != st.session_state.num_solar_pv_types:
+                st.session_state.pv_efficiency = [0.0] * st.session_state.num_solar_pv_types
+            st.session_state.pv_efficiency[i] = st.number_input(
+                f"Type {i+1} PV efficiency [%]:", 
+                min_value=0.0, 
+                value=st.session_state.pv_efficiency[i])
         
-        if len(st.session_state.pv_T_ref) != st.session_state.num_solar_pv_types:
-            st.session_state.pv_T_ref = [0.0] * st.session_state.num_solar_pv_types
-        st.session_state.pv_T_ref[i] = st.number_input(
-            f"Type {i+1} PV refrence Temperature [°C]:", 
+        elif st.session_state.solar_pv_calculation_type[i] == 'Nominal Power':
+            if len(st.session_state.pv_nominal_power) != st.session_state.num_solar_pv_types:
+                st.session_state.pv_nominal_power = [0.0] * st.session_state.num_solar_pv_types
+            st.session_state.pv_nominal_power[i] = st.number_input(
+                f"Type {i+1} PV nominal power [kW]:", 
+                min_value=0.0, 
+                value=st.session_state.pv_nominal_power[i])
+
+        if len(st.session_state.pv_theta_tilt) != st.session_state.num_solar_pv_types:
+            st.session_state.pv_theta_tilt = [0.0] * st.session_state.num_solar_pv_types
+        st.session_state.pv_theta_tilt[i] = st.number_input(
+            f"Type {i+1} PV tilt angle [°]:", 
             min_value=0.0, 
-            value=st.session_state.pv_T_ref[i])
+            value=st.session_state.pv_theta_tilt[i])
         
-        if len(st.session_state.pv_T_ref_NOCT) != st.session_state.num_solar_pv_types:
-            st.session_state.pv_T_ref_NOCT = [0.0] * st.session_state.num_solar_pv_types
-        st.session_state.pv_T_ref_NOCT[i] = st.number_input(
-            f"Type {i+1} PV NOCT reference temperature [°C]:", 
-            min_value=0.0, 
-            value=st.session_state.pv_T_ref_NOCT[i])
+        if len(st.session_state.pv_azimuth) != st.session_state.num_solar_pv_types:
+            st.session_state.pv_azimuth = [0.0] * st.session_state.num_solar_pv_types
+        st.session_state.pv_azimuth[i] = st.number_input(
+            f"Type {i+1} PV azimuth angle [°]:", 
+            min_value=-180.0,
+            max_value=180.0,
+            value=st.session_state.pv_azimuth[i])
         
-        if len(st.session_state.pv_NOCT) != st.session_state.num_solar_pv_types:
-            st.session_state.pv_NOCT = [0.0] * st.session_state.num_solar_pv_types
-        st.session_state.pv_NOCT[i] = st.number_input(
-            f"Type {i+1} PV NOCT [°C]:", 
-            min_value=0.0, 
-            value=st.session_state.pv_NOCT[i])
+        if st.session_state.pv_degradation:
+            if len(st.session_state.pv_degradation_rate) != st.session_state.num_solar_pv_types:
+                st.session_state.pv_degradation_rate = [0.0] * st.session_state.num_solar_pv_types
+            st.session_state.pv_degradation_rate[i] = st.number_input(
+                f"Type {i+1} PV degradation rate [% per year]:", 
+                min_value=0.0, 
+                value=st.session_state.pv_degradation_rate[i])
         
-        if len(st.session_state.pv_I_ref_NOCT) != st.session_state.num_solar_pv_types:
-            st.session_state.pv_I_ref_NOCT = [0.0] * st.session_state.num_solar_pv_types
-        st.session_state.pv_I_ref_NOCT[i] = st.number_input(
-            f"Type {i+1} PV NOCT reference irradiation [Wh/m^2]:", 
+        if st.session_state.pv_temperature_dependent_efficiency:
+            if len(st.session_state.pv_temperature_coefficient) != st.session_state.num_solar_pv_types:
+                st.session_state.pv_temperature_coefficient = [0.0] * st.session_state.num_solar_pv_types
+            st.session_state.pv_temperature_coefficient[i] = st.number_input(
+                f"Type {i+1} PV temperature coefficient [% per °C]:", 
+                value=st.session_state.pv_temperature_coefficient[i])
+            
+            if len(st.session_state.pv_T_ref) != st.session_state.num_solar_pv_types:
+                st.session_state.pv_T_ref = [0.0] * st.session_state.num_solar_pv_types
+            st.session_state.pv_T_ref[i] = st.number_input(
+                f"Type {i+1} PV refrence Temperature [°C]:", 
+                min_value=0.0, 
+                value=st.session_state.pv_T_ref[i])
+            
+            if len(st.session_state.pv_T_ref_NOCT) != st.session_state.num_solar_pv_types:
+                st.session_state.pv_T_ref_NOCT = [0.0] * st.session_state.num_solar_pv_types
+            st.session_state.pv_T_ref_NOCT[i] = st.number_input(
+                f"Type {i+1} PV NOCT reference temperature [°C]:", 
+                min_value=0.0, 
+                value=st.session_state.pv_T_ref_NOCT[i])
+            
+            if len(st.session_state.pv_NOCT) != st.session_state.num_solar_pv_types:
+                st.session_state.pv_NOCT = [0.0] * st.session_state.num_solar_pv_types
+            st.session_state.pv_NOCT[i] = st.number_input(
+                f"Type {i+1} PV NOCT [°C]:", 
+                min_value=0.0, 
+                value=st.session_state.pv_NOCT[i])
+            
+            if len(st.session_state.pv_I_ref_NOCT) != st.session_state.num_solar_pv_types:
+                st.session_state.pv_I_ref_NOCT = [0.0] * st.session_state.num_solar_pv_types
+            st.session_state.pv_I_ref_NOCT[i] = st.number_input(
+                f"Type {i+1} PV NOCT reference irradiation [Wh/m^2]:", 
+                min_value=0.0, 
+                value=st.session_state.pv_I_ref_NOCT[i])
+        
+        if not st.session_state.pv_dynamic_inverter_efficiency:
+            if len(st.session_state.pv_inverter_efficiency) != st.session_state.num_solar_pv_types:
+                st.session_state.pv_inverter_efficiency = [0.0] * st.session_state.num_solar_pv_types
+            st.session_state.pv_inverter_efficiency[i] = st.number_input(
+                f"Type {i+1} inverter efficiency [%]:", 
+                min_value=0.0, 
+                value=st.session_state.pv_inverter_efficiency[i])
+            
+    if st.session_state.economic_validation:
+        # solar_pv Investment Cost
+        if len(st.session_state.solar_pv_investment_cost) != st.session_state.num_solar_pv_types:
+            st.session_state.solar_pv_investment_cost = [0.0] * st.session_state.num_solar_pv_types
+        st.session_state.solar_pv_investment_cost[i] = st.number_input(
+            f"Investment Cost [USD]:", 
             min_value=0.0, 
-            value=st.session_state.pv_I_ref_NOCT[i])
-    
-    if not st.session_state.pv_dynamic_inverter_efficiency:
-        if len(st.session_state.pv_inverter_efficiency) != st.session_state.num_solar_pv_types:
-            st.session_state.pv_inverter_efficiency = [0.0] * st.session_state.num_solar_pv_types
-        st.session_state.pv_inverter_efficiency[i] = st.number_input(
-            f"Type {i+1} inverter efficiency [%]:", 
+            value=st.session_state.solar_pv_investment_cost[i],
+            key=f"solar_pv_investment_cost_{i}"
+        )
+
+        # solar_pv Yearly Operation and Maintenance Cost
+        if len(st.session_state.solar_pv_maintenance_cost) != st.session_state.num_solar_pv_types:
+            st.session_state.solar_pv_maintenance_cost = [0.0] * st.session_state.num_solar_pv_types
+        st.session_state.solar_pv_maintenance_cost[i] = st.number_input(
+            f"Yearly Operation and Maintenance Cost [USD/year]:", 
             min_value=0.0, 
-            value=st.session_state.pv_inverter_efficiency[i])
+            value=st.session_state.solar_pv_maintenance_cost[i],
+            key=f"solar_pv_maintenance_cost_{i}"
+        )
+
 
     if st.button("Close"):
         st.rerun()
-
-def render_timezone_selector() -> str:
-    # List of all available time zones with country names
-    timezones_with_countries = ["Universal Time Coordinated - UTC"]  # Manually add UTC at the beginning
-    for country_code, timezones in pytz.country_timezones.items():
-        country_name = pytz.country_names[country_code]
-        for timezone in timezones:
-            timezones_with_countries.append(f"{country_name} - {timezone}")
-
-    # Select time zone from a comprehensive list with country names
-    selected_timezone_with_country = st.selectbox("Select the time zone for the installation dates:", timezones_with_countries)
-
-    # Extract just the timezone (without the country name)
-    selected_timezone = selected_timezone_with_country.split(' - ')[1]
-
-    return selected_timezone
 
 # Function to convert installation dates to UTC
 def convert_dates_to_utc(installation_dates: list, timezone_str: str) -> list:
@@ -145,7 +177,7 @@ def solar_pv() -> None:
         if st.session_state.solar_pv_num_units > 1:
             # Checkbox to determine if the installation date is the same for all units
             st.session_state.same_date = st.checkbox("Same installation date for all units", value=st.session_state.same_date)
-            st.session_state.selected_timezone_solar_pv = render_timezone_selector()
+            st.session_state.selected_timezone_solar_pv = timezone_selector()
         
             if st.session_state.same_date:
                 if 'installation_dates' not in st.session_state or len(st.session_state.installation_dates) != st.session_state.solar_pv_num_units:
@@ -197,7 +229,7 @@ def solar_pv() -> None:
         else:
             # Only one unit, so no checkbox needed
             st.write("Enter the installation date for the unit:")
-            st.session_state.selected_timezone_solar_pv = render_timezone_selector()
+            st.session_state.selected_timezone_solar_pv = timezone_selector()
             col1, col2 = st.columns(2)
             with col1:
                 input_date = st.date_input(
@@ -259,15 +291,22 @@ def solar_pv() -> None:
         st.session_state.solar_pv_types = ['Type 1']        
         st.session_state.solar_pv_type[0] = st.session_state.solar_pv_types[0]
 
-    st.write("Choose what was included in your calculations:")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.session_state.pv_degradation = st.checkbox("Yearly PV degradation", value=st.session_state.pv_degradation)
+    if st.session_state.technical_validation:
+        st.write("Choose what was included in your calculations:")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.session_state.pv_degradation = st.checkbox("Yearly PV degradation", value=st.session_state.pv_degradation)
 
-        st.session_state.pv_temperature_dependent_efficiency = st.checkbox("Temperature dependent PV efficiency", value=st.session_state.pv_temperature_dependent_efficiency)
+            st.session_state.pv_temperature_dependent_efficiency = st.checkbox("Temperature dependent PV efficiency", value=st.session_state.pv_temperature_dependent_efficiency)
 
-    with col2:
-        st.session_state.pv_dynamic_inverter_efficiency = st.checkbox("Dynamic inverter efficency", value=st.session_state.pv_dynamic_inverter_efficiency)
+        with col2:
+            st.session_state.pv_dynamic_inverter_efficiency = st.checkbox("Dynamic inverter efficency", value=st.session_state.pv_dynamic_inverter_efficiency)
+
+        st.session_state.pv_rho = st.number_input(
+            f"Ground reflectance (rho) [%]:", 
+            min_value=0.0,
+            max_value=100.0,
+            value=st.session_state.pv_rho)
 
     st.write("Enter the specifications for each type of solar PV:")
     col1, col2 = st.columns(2)

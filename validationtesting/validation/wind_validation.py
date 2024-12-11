@@ -91,15 +91,20 @@ def wind_benchmark() -> None:
     Z0 = st.session_state.wind_Z0
     scope = st.session_state.wind_model_output_scope
     surface_roughness = st.session_state.wind_surface_roughness
+    discount_rate = st.session_state.get("discount_rate") / 100
+    start_date = st.session_state.get("start_date")
+
     if scope == "Per Unit":
         for unit in range(num_units):
             wind_data[f'Benchmark wind Energy Unit {unit+1} [Wh]'] = 0
+            wind_data[f'Benchmark wind Discounted Energy Unit {unit+1} [Wh]'] = 0
         wind_data['Benchmark wind Energy Total [Wh]'] = 0
+        wind_data['Benchmark wind Discounted Energy Total [Wh]'] = 0
     else:
         wind_data['Benchmark wind Energy Total [Wh]'] = 0
 
     for i in range(len(wind_data)):
-        time = datetime.datetime.strptime(wind_data['UTC Time'][i], '%Y-%m-%d %H:%M:%S')
+        time = datetime.datetime.strptime(wind_data.loc[i, 'UTC Time'], '%Y-%m-%d %H:%M:%S')
         for unit in range(num_units):
             type = wind_type[unit]
             type_int = int(type.replace("Type ", "")) - 1
@@ -117,19 +122,21 @@ def wind_benchmark() -> None:
                     inverter_efficiency = initial_inverter_efficiency[type_int]
 
             if complexity == "Wind Speed given for one Height":
-                w_Z1 = wind_data[f'Wind Speed {Z1}m [m/s]'][i]
+                w_Z1 = wind_data.loc[i, f'Wind Speed {Z1}m [m/s]']
                 wind_energy = get_wind_energy_one_height(w_Z1, Z1, hub_height[type_int], power_curve, drivetrain_efficiency, surface_roughness)
                 wind_energy = wind_energy * inverter_efficiency
 
             elif complexity == "Wind Speed given for two Heights":
-                w_Z1 = wind_data[f'Wind Speed {Z1}m [m/s]'][i]
-                w_Z0 = wind_data[f'Wind Speed {Z0}m [m/s]'][i]
+                w_Z1 = wind_data.loc[i, f'Wind Speed {Z1}m [m/s]']
+                w_Z0 = wind_data.loc[i, f'Wind Speed {Z0}m [m/s]']
                 wind_energy = get_wind_energy_two_heights(w_Z1, w_Z0, Z1, Z0, hub_height[type_int], power_curve, drivetrain_efficiency)
                 wind_energy = wind_energy * inverter_efficiency
 
             wind_data.at[i, f'Benchmark wind Energy Unit {unit+1} [Wh]'] = wind_energy
+            wind_data.at[i, f'Benchmark wind Discounted Energy Unit {unit+1} [Wh]'] = wind_energy / ((1 + discount_rate) ** ((time - start_date).days / 365))
             wind_data.at[i, 'Benchmark wind Energy Total [Wh]'] += wind_energy
+            wind_data.at[i, 'Benchmark wind Discounted Energy Total [Wh]'] += wind_data.at[i, f'Benchmark wind Discounted Energy Unit {unit+1} [Wh]']
 
-    results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "wind_benchmark.csv"
+    results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "wind_validation.csv"
     wind_data.to_csv(results_data_path)
     logging.info(f"Wind Benchmark saved in {results_data_path}")

@@ -5,8 +5,10 @@ from validationtesting.gui.views.utils import initialize_session_state
 import datetime as dt
 import logging
 
-from validationtesting.validation.solar_benchmarking import solar_pv_benchmark
-from validationtesting.validation.wind_benchmarking import wind_benchmark
+from validationtesting.validation.solar_pv_validation import solar_pv_benchmark
+from validationtesting.validation.wind_validation import wind_benchmark
+from validationtesting.validation.generator_validation import generator_validation_testing
+from validationtesting.validation.battery_validation import battery_validation_testing
 
 class Benchmark():
     def __init__(self) -> None:
@@ -34,7 +36,7 @@ class Benchmark():
         self.logger.info(f"Combined Benchmark saved in {combined_data_path}")
 
     def create_df(self, resource: str) -> pd.DataFrame:
-        benchmark_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results" / f"{resource}_benchmark.csv"
+        benchmark_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results" / f"{resource}_validation.csv"
         model_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "inputs" / f"model_output_{resource}.csv"
         benchmark_df = pd.read_csv(benchmark_data_path)
         model_df = pd.read_csv(model_data_path)

@@ -16,6 +16,7 @@ Functions:
 import streamlit as st
 import pandas as pd
 import folium
+import datetime as dt
 from validationtesting.gui.views.utils import initialize_session_state
 from streamlit_folium import st_folium
 from geopy.geocoders import Nominatim
@@ -53,46 +54,61 @@ def general() -> None:
 
     initialize_session_state(st.session_state.default_values, 'general_info')
 
-    # Location selection
-    st.subheader("Select Project Location")
-
-    # Dropdown for selecting the method of input
-    location_input_method = st.selectbox(
-        "Choose how to input location:",
-        ("Select on Map", "Enter Coordinates Manually")
-    )
-
-    if location_input_method == "Select on Map":
-        # Address input field
-        address = st.text_input("Enter location address:", 
-                                help="Input a specific address or location name to set project coordinates.")
+    start_date = st.date_input("Start Date", 
+                               value=st.session_state.start_date.date())
+    start_date = dt.datetime.combine(start_date, dt.time.min)
+    
+    end_date = st.date_input("End Date", 
+                             value=st.session_state.end_date)
+    st.session_state.end_date = dt.datetime.combine(end_date, dt.time.min)
+    
+    if st.session_state.economic_validation:
+        st.session_state.discount_rate = st.number_input("Discount Rate (%)", 
+                                                        value=st.session_state.discount_rate, 
+                                                        format="%.2f")
         
-        # Handle address input to get coordinates (you need to implement handle_location_input)
-        if address:
-            handle_location_input(address)
+    if st.session_state.technical_validation:
+        if st.session_state.solar_pv or st.session_state.wind:
+            # Location selection
+            st.subheader("Select Project Location")
 
-        # Initialize the map with the current coordinates
-        initial_coords = [st.session_state.lat, st.session_state.lon]
-        m = folium.Map(location=initial_coords, zoom_start=5)
-        folium.Marker(initial_coords, tooltip="Project Location").add_to(m)
+            # Dropdown for selecting the method of input
+            location_input_method = st.selectbox(
+                "Choose how to input location:",
+                ("Select on Map", "Enter Coordinates Manually")
+            )
 
-        # Display the map
-        output = st_folium(m, width=700, height=500)
+            if location_input_method == "Select on Map":
+                # Address input field
+                address = st.text_input("Enter location address:", 
+                                        help="Input a specific address or location name to set project coordinates.")
+                
+                # Handle address input to get coordinates (you need to implement handle_location_input)
+                if address:
+                    handle_location_input(address)
 
-        # Update coordinates based on the last clicked point on the map
-        if output and output.get('last_clicked'):
-            st.session_state.lat = output['last_clicked']['lat']
-            lon = output['last_clicked']['lng']
-            lon = lon % 360
-            if lon > 180:
-                lon = lon - 360
-            if lon < -180:
-                lon = lon + 360
-            st.session_state.lon = lon
+                # Initialize the map with the current coordinates
+                initial_coords = [st.session_state.lat, st.session_state.lon]
+                m = folium.Map(location=initial_coords, zoom_start=5)
+                folium.Marker(initial_coords, tooltip="Project Location").add_to(m)
 
-    elif location_input_method == "Enter Coordinates Manually":
-        # Manually input latitude and longitude
-        st.session_state.lat = st.number_input("Enter Latitude:", value=st.session_state.lat, format="%.6f")
-        st.session_state.lon = st.number_input("Enter Longitude:", value=st.session_state.lon, format="%.6f")
+                # Display the map
+                output = st_folium(m, width=700, height=500)
 
-    st.write(f"Selected Coordinates: {st.session_state.lat}, {st.session_state.lon}")
+                # Update coordinates based on the last clicked point on the map
+                if output and output.get('last_clicked'):
+                    st.session_state.lat = output['last_clicked']['lat']
+                    lon = output['last_clicked']['lng']
+                    lon = lon % 360
+                    if lon > 180:
+                        lon = lon - 360
+                    if lon < -180:
+                        lon = lon + 360
+                    st.session_state.lon = lon
+
+            elif location_input_method == "Enter Coordinates Manually":
+                # Manually input latitude and longitude
+                st.session_state.lat = st.number_input("Enter Latitude:", value=st.session_state.lat, format="%.6f")
+                st.session_state.lon = st.number_input("Enter Longitude:", value=st.session_state.lon, format="%.6f")
+
+            st.write(f"Selected Coordinates: {st.session_state.lat}, {st.session_state.lon}")

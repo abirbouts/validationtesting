@@ -3,10 +3,12 @@ project_info:
   project_description: "This is a default project."
 
 component_selection:
-  solar_pv: true
+  solar_pv: false
   wind: false
   generator: false
   battery: false
+  technical_validation: false
+  economic_validation: false
 
 solar_pv_parameters:
     solar_pv_num_units: 1
@@ -19,21 +21,26 @@ solar_pv_parameters:
     solar_pv_types: ['Type 1']
     solar_pv_type: ['Type 1']
     pv_lifetime: [20]
+    pv_rho: 0.2
+    solar_pv_calculation_type: ['Nominal Power']
     pv_area: [5.0]
     pv_efficiency: [20.0]
-    pv_theta_tilt: [0.3]
+    pv_nominal_power: [1000.0]
+    pv_theta_tilt: [30.0]
+    pv_azimuth: [180.0]
     pv_degradation: false
     pv_degradation_rate: [0.5]
     pv_temperature_dependent_efficiency: false
-    pv_temperature_coefficient: [0.5]
+    pv_temperature_coefficient: [-0.5]
     pv_T_ref: [25.0]
     pv_T_ref_NOCT: [25.0]
     pv_NOCT: [45.0]
     pv_I_ref_NOCT: [1000.0]
-    pv_albedo: false
-    pv_albedo_coefficient: 0.2
     pv_dynamic_inverter_efficiency: false
     pv_inverter_efficiency: [80.0]
+    solar_pv_investment_cost: [0.0]
+    solar_pv_maintenance_cost: [0.0]
+    solar_pv_curtailment: [true]
     
 solar_irradiation_parameters:
     solar_irradiation_selected_input_type: "GHI & DHI"
@@ -77,6 +84,8 @@ battery_parameters:
     battery_efficiency_type: 'Seperate Charging and Discharging Efficiency'
     battery_inverter_eff_included: [true]
     battery_temporal_degradation_rate: [2.0]
+    battery_investment_cost: [0.0]
+    battery_maintenance_cost: [0.0]
 
 wind_parameters:
     wind_num_units: 1
@@ -103,6 +112,9 @@ wind_parameters:
     wind_Z0: 10.0
     wind_surface_type: "Suburbs"
     wind_surface_roughness: 1.50
+    wind_investment_cost: [0.0]
+    wind_maintenance_cost: [0.0]
+    wind_curtailment: [true]
 
 generator_parameters:
     generator_num_units: 1
@@ -125,6 +137,13 @@ generator_parameters:
     generator_dynamic_efficiency_type: ["Tabular Data"]
     generator_dynamic_efficiency_uploaded: [false]
     generator_efficiency_formula: [false]
+    generator_fuel_consumption_scope: ["Total"]
+    generator_total_fuel_consumption: [1000.0]
+    generator_investment_cost: [0.0]
+    generator_maintenance_cost: [0.0]
+    generator_fuel_price: 1.80
+    generator_variable_fuel_price: false
+    generator_variable_fuel_price_uploaded: false
 
 upload_model_parameters:
     solar_pv_data_uploaded: false
@@ -139,8 +158,11 @@ upload_model_parameters:
     wind_model_output_scope: "Total"
 
 general_info:
-  lat: 0.0
-  lon: 0.0
+  start_date: "2025-01-01 00:00:00"
+  end_date: "2044-12-31 23:00:00"
+  discount_rate: 5.0
+  lat: -11.56567
+  lon: 34.23567
 
 generate_plots:
   plots_generated: false

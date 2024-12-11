@@ -11,14 +11,44 @@ from validationtesting.gui.views.utils import initialize_session_state
 import pandas as pd
 
 @st.dialog("All Timestamps, where the difference between Model and Benchmark exceeds 10 percent")
-def flag_details(df) -> None:
+def flag_details(df, component) -> None:
     flagged_df = df[df['Difference Exceeds 10%']]
-    flagged_df.drop(columns=['Difference Exceeds 10%'], inplace=True)
+    flagged_df = flagged_df.reset_index()[['UTC Time', f'Model {component} Energy Total [Wh]', f'Benchmark {component} Energy Total [Wh]']]
     st.write(flagged_df)
 
 @st.dialog("MAE Details")
 def mae_details(df) -> None:
     st.write(df)
+
+@st.dialog("All Timestamps, where the power constraints are violated")
+def power_constraints_details(df) -> None:
+    flagged_df = df[(df[[f"Power Constraints Unit {unit+1}" for unit in range(st.session_state.generator_num_units)]] == False).any(axis=1)]
+    st.write(flagged_df)
+
+@st.dialog("Fuel Consumption Details")
+def fuel_consumption_details(fuel_consumption_model, fuel_consumption_benchmark) -> None:
+    st.write(f"Model Fuel Consumption: {fuel_consumption_model}")
+    st.write(f"Benchmark Fuel Consumption: {fuel_consumption_benchmark}")
+
+@st.dialog("All Timestamps, where the charge power constraints are violated")
+def charge_power_constraints_details(df) -> None:
+    flagged_df = df[(df[[f"Charge Power Constraints Unit {unit+1}" for unit in range(st.session_state.battery_num_units)]] == False).any(axis=1)]
+    st.write(flagged_df)
+
+@st.dialog("All Timestamps, where the state of charge constraints are violated")
+def soc_constraints_details(df) -> None:
+    flagged_df = df[(df[[f"SoC Constraints Unit {unit+1}" for unit in range(st.session_state.battery_num_units)]] == False).any(axis=1)]
+    st.write(flagged_df)
+
+def add_lcoe_metric(component: str) -> None:
+    # Load project name from session state
+    project_name = st.session_state.get("project_name")
+
+    # Define file paths
+    data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"cost_validation.csv"
+
+    # Load data
+    df = pd.read_csv(data_path, index_col='UTC Time', parse_dates=True)
 
 def add_difference_flag(component: str) -> pd.DataFrame:
     # Load project name from session state
@@ -44,9 +74,9 @@ def add_difference_flag(component: str) -> pd.DataFrame:
     updated_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"combined_model_benchmark_with_flag.csv"
     df.to_csv(updated_data_path)
     flag_count = df['Difference Exceeds 10%'].sum()
-    st.metric(label="Flag Count", value=flag_count)
+    st.metric(label="Deviation exceeds 10%", value=flag_count)
     if st.button(f"View details", key = f"{component}_flag_count"):
-        flag_details(df)
+        flag_details(df, component)
     return
 
 def mae_metric(component: str) -> None:
@@ -59,6 +89,69 @@ def mae_metric(component: str) -> None:
     st.metric(label="MAE Total", value=round(df['MAE Total'][0], 2))
     if st.button(f"View details", key=f"{component}_mae_details"):
         mae_details(df)
+    return
+
+def power_constraints_metric() -> None:
+    # Load project name from session state
+    project_name = st.session_state.get("project_name")
+
+    # Define file paths
+    data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"generator_validation.csv"
+    df = pd.read_csv(data_path)
+    count = 0
+    for unit in range(st.session_state.generator_num_units):
+        count += (df[f"Power Constraints Unit {unit+1}"] == False).sum()
+    st.metric(label="Power out of boundary:", value=count)
+    if st.button(f"View details", key=f"generator_power_constraints_details"):
+        power_constraints_details(df)
+    return
+
+def fuel_consumption_metric() -> None:
+    # Load project name from session state
+    project_name = st.session_state.get("project_name")
+
+    # Define file paths
+    data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"generator_validation.csv"
+    df = pd.read_csv(data_path)
+    fuel_consumption_model = 0
+    fuel_consumption_benchmark = 0
+    for unit in range(st.session_state.generator_num_units):
+        fuel_consumption_model += st.session_state.generator_total_fuel_consumption[unit]
+        fuel_consumption_benchmark += df[f"Benchmark Fuel Consumption Generator Unit {unit+1}"].sum()
+    percentage_difference = round((abs(fuel_consumption_model - fuel_consumption_benchmark) / fuel_consumption_benchmark)/100, 3)
+    st.metric(label="Fuel Consumption Difference:", value=str(percentage_difference) + "%")
+    if st.button(f"View details", key=f"generator_fuel_consumption_details"):
+        fuel_consumption_details(fuel_consumption_model, fuel_consumption_benchmark)
+    return
+
+def charge_power_constraints_metric() -> None:
+    # Load project name from session state
+    project_name = st.session_state.get("project_name")
+
+    # Define file paths
+    data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"battery_validation.csv"
+    df = pd.read_csv(data_path)
+    count = 0
+    for unit in range(st.session_state.generator_num_units):
+        count += (df[f"Charge Power Constraints Unit {unit+1}"] == False).sum()
+    st.metric(label="Charge power out of boundary:", value=count)
+    if st.button(f"View details", key=f"charge_power_constraints_details"):
+        charge_power_constraints_details(df)
+    return
+
+def soc_constraints_metric() -> None:
+    # Load project name from session state
+    project_name = st.session_state.get("project_name")
+
+    # Define file paths
+    data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"battery_validation.csv"
+    df = pd.read_csv(data_path)
+    count = 0
+    for unit in range(st.session_state.generator_num_units):
+        count += (df[f"SoC Constraints Unit {unit+1}"] == False).sum()
+    st.metric(label="State of Charge out of boundary:", value=count)
+    if st.button(f"View details", key=f"soc_constraints_details"):
+        soc_constraints_details(df)
     return
 
 def plot_model_vs_benchmark(component: str) -> None:
@@ -160,7 +253,7 @@ def plot_mae(component: str) -> None:
         # Add MAE values above error bars
         for i in range(len(merged_data)):
             plt.text(merged_data[scope][i], 
-                     merged_data['Mean Benchmark Total'][i] + merged_data['MAE Total'][i], 
+                     merged_data.loc[i, 'Mean Benchmark Total'] + merged_data.loc[i, 'MAE Total'], 
                      f'{merged_data["MAE Total"][i]:.1f}', 
                      ha='center', va='bottom', fontsize=8)
         plt.xticks(rotation=80)
@@ -175,12 +268,12 @@ def plot_mae(component: str) -> None:
         plt.close()  # Close the plot to free up memory
 
 def solar_pv_generate_plots() -> None:
+    plot_model_vs_benchmark("solar_pv")
     plot_mae("solar_pv")
 
 def wind_generate_plots() -> None:
     plot_model_vs_benchmark("wind")
     plot_mae("wind")
-
 
 
 def results() -> None:
@@ -197,8 +290,8 @@ def results() -> None:
         used_components.append("Solar PV")
     if st.session_state.wind:
         used_components.append("Wind")
-    #if st.session_state.generator:
-    #    used_components.append("Generator")
+    if st.session_state.generator:
+        used_components.append("Generator")
     if st.session_state.battery:
         used_components.append("Battery")
 
@@ -210,12 +303,11 @@ def results() -> None:
     plots_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "plots"
 
     if results_component == "Solar PV":
-        model_vs_benchmark_path = plots_path / f"solar_pv_model_vs_benchmark.png"
-        st.image(str(model_vs_benchmark_path), caption=f"{granularity} Mean Benchmark Output with MAE", use_column_width=True)
-        st.write("Mean Benchmark Output with MAE")
-        granularity = st.selectbox("Select Granularity", ["Yearly", "Monthly", "Hourly"])
-        mae_path = plots_path / f"solar_pv_mae_{granularity.lower()}.png"
-        st.image(str(mae_path), caption=f"{granularity} Mean Benchmark Output with MAE", use_container_width=True)
+        col1, col2 = st.columns(2)
+        with col1:
+            add_difference_flag("solar_pv")
+        with col2:
+            mae_metric("solar_pv")
 
     if results_component == "Wind":
         col1, col2 = st.columns(2)
@@ -224,31 +316,47 @@ def results() -> None:
         with col2:
             mae_metric("wind")
 
-    st.subheader("Plots")
-    if st.button("Generate Plots"):
-        with st.spinner('Generating Plots...'):
-            for component in used_components:
-                if component == "Solar PV":
-                    function_name = f"solar_pv_generate_plots"
-                else:
-                    function_name = f"{component.lower()}_generate_plots"
-                print(f'st.session_state.default_values={st.session_state.default_values}')
-                plot_function = getattr(sys.modules[__name__], function_name, None)
-                plot_function()
-            st.session_state.plots_generated = True
+    if results_component == "Generator":
+        col1, col2 = st.columns(2)
+        with col1:
+            power_constraints_metric()
+        with col2:
+            fuel_consumption_metric()
 
-    if results_component == "Solar PV":
-        model_vs_benchmark_path = plots_path / f"solar_pv_model_vs_benchmark.png"
-        st.image(str(model_vs_benchmark_path), caption=f"{granularity} Mean Benchmark Output with MAE", use_column_width=True)
-        st.write("Mean Benchmark Output with MAE")
-        granularity = st.selectbox("Select Granularity", ["Yearly", "Monthly", "Hourly"])
-        mae_path = plots_path / f"solar_pv_mae_{granularity.lower()}.png"
-        st.image(str(mae_path), caption=f"{granularity} Mean Benchmark Output with MAE", use_container_width=True)
+    if results_component == "Battery":
+        col1, col2 = st.columns(2)
+        with col1:
+            charge_power_constraints_metric()
+        with col2:
+            soc_constraints_metric()
 
-    if results_component == "Wind":
-        model_vs_benchmark_path = plots_path / f"wind_model_vs_benchmark.png"
-        st.image(str(model_vs_benchmark_path), caption=f"Model vs. Benchmark Output with MAE", use_container_width=True)
-        st.write("Mean Benchmark Output with MAE")
-        granularity = st.selectbox("Select Granularity", ["Hourly", "Monthly", "Yearly"])
-        mae_path = plots_path / f"wind_mae_{granularity.lower()}.png"
-        st.image(str(mae_path), caption=f"{granularity} Mean Benchmark Output with MAE", use_container_width=True)
+    if results_component == "Solar PV" or results_component == "Wind":
+
+        st.subheader("Plots")
+        if st.button("Generate Plots"):
+            with st.spinner('Generating Plots...'):
+                for component in used_components:
+                    if component == "Solar PV":
+                        function_name = f"solar_pv_generate_plots"
+                    else:
+                        function_name = f"{component.lower()}_generate_plots"
+                    print(f'st.session_state.default_values={st.session_state.default_values}')
+                    plot_function = getattr(sys.modules[__name__], function_name, None)
+                    plot_function()
+                st.session_state.plots_generated = True
+
+        if results_component == "Solar PV":
+            model_vs_benchmark_path = plots_path / f"solar_pv_model_vs_benchmark.png"
+            st.image(str(model_vs_benchmark_path), caption=f"Model vs. Benchmark Output with MAE", use_container_width=True)
+            st.write("Mean Benchmark Output with MAE")
+            granularity = st.selectbox("Select Granularity", ["Hourly", "Monthly", "Yearly"])
+            mae_path = plots_path / f"solar_pv_mae_{granularity.lower()}.png"
+            st.image(str(mae_path), caption=f"{granularity} Mean Benchmark Output with MAE", use_container_width=True)
+
+        if results_component == "Wind":
+            model_vs_benchmark_path = plots_path / f"wind_model_vs_benchmark.png"
+            st.image(str(model_vs_benchmark_path), caption=f"Model vs. Benchmark Output with MAE", use_container_width=True)
+            st.write("Mean Benchmark Output with MAE")
+            granularity = st.selectbox("Select Granularity", ["Hourly", "Monthly", "Yearly"])
+            mae_path = plots_path / f"wind_mae_{granularity.lower()}.png"
+            st.image(str(mae_path), caption=f"{granularity} Mean Benchmark Output with MAE", use_container_width=True)

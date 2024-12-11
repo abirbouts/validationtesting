@@ -4,6 +4,8 @@ It includes functions to convert images to base64 strings and to render a footer
 """
 import base64
 import streamlit as st
+import pytz
+import re
 
 from typing import Tuple, Any
 from io import BytesIO
@@ -134,3 +136,85 @@ def csv_upload_interface(key_prefix: str) -> Tuple[st.file_uploader, str, str]:
     uploaded_file = st.file_uploader(f"Choose a CSV file", type=["csv"], key=f"{key_prefix}_uploader")
     
     return uploaded_file, delimiter_value, decimal_value
+
+def time_format_timezone_selectors() -> tuple:
+    # List of all available time zones with country names
+    timezones_with_countries = ["Universal Time Coordinated - UTC"]
+    # Add all GMT time zones
+    gmt_offsets = range(-12, 15)  # GMT-12 to GMT+14
+    for offset in gmt_offsets:
+        sign = "+" if offset >= 0 else "-"
+        hours = abs(offset)
+        timezones_with_countries.append(f"UTC Offset {sign}{hours:02d}:00")
+    for country_code, timezones in pytz.country_timezones.items():
+        country_name = pytz.country_names[country_code]
+        for timezone in timezones:
+            timezones_with_countries.append(f"{country_name} - {timezone}")
+
+    # Common time formats to select from
+    TIME_FORMATS = [
+        "%Y-%m-%d",                # 2024-01-01
+        "%Y-%m-%d %H:%M:%S",        # 2024-01-01 12:00:00
+        "%d/%m/%Y",                 # 01/01/2024
+        "%d/%m/%Y %H:%M",           # 01/01/2024 12:00
+        "%m/%d/%Y",                 # 01/01/2024
+        "%m/%d/%Y %H:%M:%S",        # 01/01/2024 12:00:00
+        "%H:%M:%S",                 # 12:00:00
+        "%Y-%m-%dT%H:%M:%S",        # 2024-01-01T12:00:00 (ISO format)
+        "Other"                     # Allow user to enter a custom format
+    ]
+
+    col1, col2 = st.columns(2)
+    with col1:
+        # Select time format from common options
+        time_format_choice = st.selectbox("Select the time format of the CSV file:", TIME_FORMATS, index=1)
+
+        # If "Other" is selected, show a text input for custom time format
+        if time_format_choice == "Other":
+            time_format = st.text_input("Enter the custom time format:", value="%Y-%m-%d %H:%M:%S")
+        else:
+            time_format = time_format_choice
+        st.write(f"Selected Time Format: {time_format}")
+
+    with col2:
+        # Select time zone from a comprehensive list with country names
+        selected_timezone_with_country = st.selectbox("Select the time zone of the data (with country):", timezones_with_countries)
+
+        if "UTC Offset" in selected_timezone_with_country:
+            match = re.search(r'[+-]\d+', selected_timezone_with_country)
+            offset = int(match.group())
+            offset = offset * (-1)
+            selected_timezone = f"Etc/GMT{'+' if offset > 0 else ''}{offset}"
+        else:
+            # Extract just the timezone (without the country name)
+            selected_timezone = selected_timezone_with_country.split(' - ')[1]
+
+    return time_format, selected_timezone
+
+def timezone_selector() -> tuple:
+    # List of all available time zones with country names
+    timezones_with_countries = ["Universal Time Coordinated - UTC"]
+    # Add all GMT time zones
+    gmt_offsets = range(-12, 15)  # GMT-12 to GMT+14
+    for offset in gmt_offsets:
+        sign = "+" if offset >= 0 else "-"
+        hours = abs(offset)
+        timezones_with_countries.append(f"UTC Offset {sign}{hours:02d}:00")
+    for country_code, timezones in pytz.country_timezones.items():
+        country_name = pytz.country_names[country_code]
+        for timezone in timezones:
+            timezones_with_countries.append(f"{country_name} - {timezone}")
+
+    # Select time zone from a comprehensive list with country names
+    selected_timezone_with_country = st.selectbox("Select the time zone of the data (with country):", timezones_with_countries)
+
+    if "UTC Offset" in selected_timezone_with_country:
+        match = re.search(r'[+-]\d+', selected_timezone_with_country)
+        offset = int(match.group())
+        offset = offset * (-1)
+        selected_timezone = f"Etc/GMT{'+' if offset > 0 else ''}{offset}"
+    else:
+        # Extract just the timezone (without the country name)
+        selected_timezone = selected_timezone_with_country.split(' - ')[1]
+
+    return selected_timezone

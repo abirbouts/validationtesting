@@ -1,6 +1,6 @@
 import streamlit as st
 from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state
+from validationtesting.gui.views.utils import initialize_session_state, timezone_selector
 import datetime as dt
 import pytz
 import pandas as pd
@@ -9,15 +9,6 @@ import numpy as np
 @st.dialog("Enter Generator Specifications")
 def enter_specifications(i: int) -> None:
     st.write(f"Enter Generator Specifications for Type {i+1}.")
-    if not st.session_state.generator_dynamic_efficiency:
-        if len(st.session_state.generator_efficiency) != st.session_state.num_generator_types:
-            st.session_state.generator_efficiency.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_efficiency)))
-        st.session_state.generator_efficiency[i] = st.number_input(
-            f"Generator efficiency [%]:", 
-            min_value=0.0, 
-            value=st.session_state.generator_efficiency[i],
-            key=f"generator_efficiency_{i}"
-        )
 
     if len(st.session_state.generator_lifetime) != st.session_state.num_generator_types:
         st.session_state.generator_lifetime.extend([0] * (st.session_state.num_generator_types - len(st.session_state.generator_lifetime)))
@@ -28,104 +19,124 @@ def enter_specifications(i: int) -> None:
         key=f"generator_lifetime_{i}"
     )
 
-    if len(st.session_state.generator_min_power) != st.session_state.num_generator_types:
-        st.session_state.generator_min_power.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_min_power)))
-    st.session_state.generator_min_power[i] = st.number_input(
-        f"Minimum Power [W]:", 
-        min_value=0.0, 
-        value=st.session_state.generator_min_power[i],
-        key=f"generator_min_power_{i}"
-    )
-    
-    if len(st.session_state.generator_max_power) != st.session_state.num_generator_types:
-        st.session_state.generator_max_power.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_max_power)))
-    st.session_state.generator_max_power[i] = st.number_input(
-        f"Maximum Power [W]:", 
-        min_value=0.0, 
-        value=st.session_state.generator_max_power[i],
-        key=f"generator_max_power_{i}"
-    )
+    if st.session_state.technical_validation:
 
-    if len(st.session_state.generator_fuel_lhv) != st.session_state.num_generator_types:
-        st.session_state.generator_fuel_lhv.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_fuel_lhv)))
-    st.session_state.generator_fuel_lhv[i] = st.number_input(
-        f"Fuel LHV [Wh/l]:", 
-        min_value=0.0, 
-        value=st.session_state.generator_fuel_lhv[i],
-        key=f"generator_fuel_lhv_{i}"
-    )
+        if not st.session_state.generator_dynamic_efficiency:
+            if len(st.session_state.generator_efficiency) != st.session_state.num_generator_types:
+                st.session_state.generator_efficiency.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_efficiency)))
+            st.session_state.generator_efficiency[i] = st.number_input(
+                f"Generator efficiency [%]:", 
+                min_value=0.0, 
+                value=st.session_state.generator_efficiency[i],
+                key=f"generator_efficiency_{i}"
+            )
 
-    if st.session_state.generator_temporal_degradation:
-        if len(st.session_state.generator_temporal_degradation_rate) != st.session_state.num_generator_types:
-            st.session_state.generator_temporal_degradation_rate.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_temporal_degradation_rate)))
-        st.session_state.generator_temporal_degradation_rate[i] = st.number_input(
-            f"Degradation Rate [% per year]:", 
+        if len(st.session_state.generator_min_power) != st.session_state.num_generator_types:
+            st.session_state.generator_min_power.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_min_power)))
+        st.session_state.generator_min_power[i] = st.number_input(
+            f"Minimum Power [W]:", 
             min_value=0.0, 
-            value=st.session_state.generator_temporal_degradation_rate[i],
-            key=f"generator_degradation_rate_{i}"
+            value=st.session_state.generator_min_power[i],
+            key=f"generator_min_power_{i}"
         )
-    
-    if st.session_state.generator_dynamic_efficiency:
-        if len(st.session_state.generator_dynamic_efficiency_type) != st.session_state.num_generator_types:
-            st.session_state.generator_dynamic_efficiency_type.extend([None] * (st.session_state.num_generator_types - len(st.session_state.generator_dynamic_efficiency_type)))
-        st.session_state.generator_dynamic_efficiency_type[i] = st.selectbox(
-            "Select Input Type",
-            [
-                "Tabular Data", 
-                "Formula"
-            ],
-            index=["Tabular Data", "Formula"].index(st.session_state.generator_dynamic_efficiency_type[i]) if st.session_state.generator_dynamic_efficiency_type[i] in ["Tabular Data", "Formula"] else 0,
-            key=f"generator_dynamic_efficiency_type_{i}"
+        
+        if len(st.session_state.generator_max_power) != st.session_state.num_generator_types:
+            st.session_state.generator_max_power.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_max_power)))
+        st.session_state.generator_max_power[i] = st.number_input(
+            f"Maximum Power [W]:", 
+            min_value=0.0, 
+            value=st.session_state.generator_max_power[i],
+            key=f"generator_max_power_{i}"
         )
 
-        if st.session_state.generator_dynamic_efficiency_type[i] == "Tabular Data":
-            project_name = st.session_state.get("project_name")
-            dynamic_efficiency_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"generator_dynamic_efficiency_type_{i+1}.csv"
-            if st.session_state.generator_dynamic_efficiency_uploaded[i]:
-                # Load the uploaded CSV file into a DataFrame
-                df = pd.read_csv(dynamic_efficiency_path)
+        if len(st.session_state.generator_fuel_lhv) != st.session_state.num_generator_types:
+            st.session_state.generator_fuel_lhv.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_fuel_lhv)))
+        st.session_state.generator_fuel_lhv[i] = st.number_input(
+            f"Fuel LHV [Wh/l]:", 
+            min_value=0.0, 
+            value=st.session_state.generator_fuel_lhv[i],
+            key=f"generator_fuel_lhv_{i}"
+        )
+
+        if st.session_state.generator_temporal_degradation:
+            if len(st.session_state.generator_temporal_degradation_rate) != st.session_state.num_generator_types:
+                st.session_state.generator_temporal_degradation_rate.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_temporal_degradation_rate)))
+            st.session_state.generator_temporal_degradation_rate[i] = st.number_input(
+                f"Degradation Rate [% per year]:", 
+                min_value=0.0, 
+                value=st.session_state.generator_temporal_degradation_rate[i],
+                key=f"generator_degradation_rate_{i}"
+            )
+        
+        if st.session_state.generator_dynamic_efficiency:
+            if len(st.session_state.generator_dynamic_efficiency_type) != st.session_state.num_generator_types:
+                st.session_state.generator_dynamic_efficiency_type.extend([None] * (st.session_state.num_generator_types - len(st.session_state.generator_dynamic_efficiency_type)))
+            st.session_state.generator_dynamic_efficiency_type[i] = st.selectbox(
+                "Select Input Type",
+                [
+                    "Tabular Data", 
+                    "Formula"
+                ],
+                index=["Tabular Data", "Formula"].index(st.session_state.generator_dynamic_efficiency_type[i]) if st.session_state.generator_dynamic_efficiency_type[i] in ["Tabular Data", "Formula"] else 0,
+                key=f"generator_dynamic_efficiency_type_{i}"
+            )
+
+            if st.session_state.generator_dynamic_efficiency_type[i] == "Tabular Data":
+                project_name = st.session_state.get("project_name")
+                dynamic_efficiency_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"generator_dynamic_efficiency_type_{i+1}.csv"
+                if st.session_state.generator_dynamic_efficiency_uploaded[i]:
+                    # Load the uploaded CSV file into a DataFrame
+                    df = pd.read_csv(dynamic_efficiency_path)
+                else:
+                    # If no file is uploaded, create a default DataFrame
+                    df = pd.DataFrame({
+                        'Load': [st.session_state.generator_min_power[i], st.session_state.generator_max_power[i]],
+                        'Efficiency (%)': [20, 30]
+                    })
+
+                # Display the table for editing
+                edited_table = st.data_editor(
+                    df,
+                    num_rows="dynamic",  # Allows adding/removing rows
+                    use_container_width=True,
+                    key="csv_table_editor"
+                )
+
             else:
-                # If no file is uploaded, create a default DataFrame
-                df = pd.DataFrame({
-                    'Load': [st.session_state.generator_min_power[i], st.session_state.generator_max_power[i]],
-                    'Efficiency (%)': [20, 30]
-                })
+                st.session_state.generator_efficiency_formula[i] = st.text_input(
+                    f"Generator Efficiency Formula:", 
+                    value=st.session_state.generator_efficiency_formula[i] if st.session_state.generator_efficiency_formula[i] else f"30 * (P / {st.session_state.generator_max_power[i]})",
+                    key=f"generator_efficiency_formula_{i}"
+                )
 
-            # Display the table for editing
-            edited_table = st.data_editor(
-                df,
-                num_rows="dynamic",  # Allows adding/removing rows
-                use_container_width=True,
-                key="csv_table_editor"
-            )
+    if st.session_state.economic_validation:
+        # generator Investment Cost
+        if len(st.session_state.generator_investment_cost) != st.session_state.num_generator_types:
+            st.session_state.generator_investment_cost = [0.0] * st.session_state.num_generator_types
+        st.session_state.generator_investment_cost[i] = st.number_input(
+            f"Investment Cost [USD]:", 
+            min_value=0.0, 
+            value=st.session_state.generator_investment_cost[i],
+            key=f"generator_investment_cost_{i}"
+        )
 
-        else:
-            st.session_state.generator_efficiency_formula[i] = st.text_input(
-                f"Generator Efficiency Formula:", 
-                value=st.session_state.generator_efficiency_formula[i] if st.session_state.generator_efficiency_formula[i] else f"30 * (P / {st.session_state.generator_max_power[i]})",
-                key=f"generator_efficiency_formula_{i}"
-            )
+        # generator Yearly Operation and Maintenance Cost
+        if len(st.session_state.generator_maintenance_cost) != st.session_state.num_generator_types:
+            st.session_state.generator_maintenance_cost = [0.0] * st.session_state.num_generator_types
+        st.session_state.generator_maintenance_cost[i] = st.number_input(
+            f"Yearly Operation and Maintenance Cost [USD/year]:", 
+            min_value=0.0, 
+            value=st.session_state.generator_maintenance_cost[i],
+            key=f"generator_maintenance_cost_{i}"
+        )
+
     if st.button("Close"):
         st.session_state.generator_dynamic_efficiency_uploaded[i] = True  # Set the flag to True since data is now uploaded
-        sorted_table = edited_table.sort_values(by='Load')
-        sorted_table.to_csv(dynamic_efficiency_path, index=False)
+        if st.session_state.generator_dynamic_efficiency:
+            if st.session_state.generator_dynamic_efficiency_type[i] == "Tabular Data":
+                sorted_table = edited_table.sort_values(by='Load')
+                sorted_table.to_csv(dynamic_efficiency_path, index=False)
         st.rerun()
-
-def render_timezone_selector() -> str:
-    # List of all available time zones with country names
-    timezones_with_countries = ["Universal Time Coordinated - UTC"]  # Manually add UTC at the beginning
-    for country_code, timezones in pytz.country_timezones.items():
-        country_name = pytz.country_names[country_code]
-        for timezone in timezones:
-            timezones_with_countries.append(f"{country_name} - {timezone}")
-
-    # Select time zone from a comprehensive list with country names
-    selected_timezone_with_country = st.selectbox("Select the time zone for the installation dates:", timezones_with_countries)
-
-    # Extract just the timezone (without the country name)
-    selected_timezone = selected_timezone_with_country.split(' - ')[1]
-
-    return selected_timezone
 
 # Function to convert installation dates to UTC
 def convert_dates_to_utc(installation_dates: list[dt.datetime], timezone_str: str) -> list[dt.datetime]:
@@ -162,7 +173,7 @@ def generator() -> None:
         st.session_state.generator_installation_dates = [dt.datetime.now() for _ in range(st.session_state.generator_num_units)]
 
     with st.expander(f"Installation Dates", expanded=False):
-        st.session_state.selected_timezone_generator = render_timezone_selector()
+        st.session_state.selected_timezone_generator = timezone_selector()
         if st.session_state.generator_num_units > 1:
             # Checkbox to determine if the installation date is the same for all units
             st.session_state.generator_same_date = st.checkbox(
@@ -280,22 +291,60 @@ def generator() -> None:
         st.session_state.generator_types = ['Type 1']        
         st.session_state.generator_type[0] = st.session_state.generator_types[0]
 
-    st.write("Choose what was included in your calculations:")
+    if st.session_state.technical_validation:
+        st.write("Choose what was included in your calculations:")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.session_state.generator_dynamic_efficiency = st.checkbox(
-            "Dynamic inverter efficency", 
-            value = st.session_state.generator_dynamic_efficiency)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.session_state.generator_dynamic_efficiency = st.checkbox(
+                "Dynamic inverter efficency", 
+                value = st.session_state.generator_dynamic_efficiency)
 
-        st.session_state.generator_temporal_degradation = st.checkbox(
-            "Temporal generator degradation",
-            value = st.session_state.generator_temporal_degradation)
+            st.session_state.generator_temporal_degradation = st.checkbox(
+                "Temporal generator degradation",
+                value = st.session_state.generator_temporal_degradation)
 
-    with col2:
-        st.session_state.generator_cyclic_degradation = st.checkbox(
-            "Cyclic generator degradation", 
-            value = st.session_state.generator_cyclic_degradation)
+        with col2:
+            st.session_state.generator_cyclic_degradation = st.checkbox(
+                "Cyclic generator degradation", 
+                value = st.session_state.generator_cyclic_degradation)
+            
+    if st.session_state.economic_validation:
+        # generator fuel price
+        st.session_state.generator_variable_fuel_price = st.checkbox("Variable Fuel Price", value=st.session_state.generator_variable_fuel_price)
+        if st.session_state.generator_variable_fuel_price:
+            project_name = st.session_state.get("project_name")
+            fuel_price_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"generator_fuel_price.csv"
+            try:
+                # Load the uploaded CSV file into a DataFrame
+                df = pd.read_csv(fuel_price_path)
+            except:
+                # Generate years from start_year to end_year
+                start_year = st.session_state.get("start_date").year
+                end_year = st.session_state.get("end_date").year
+                years = list(range(start_year, end_year + 1))
+                df = pd.DataFrame({
+                    'Year': years,
+                    'Fuel Price [$/l]': [0.0] * len(years)
+                })
+            df["Year"] = df["Year"].astype(str)
+            # Display the table for editing
+            edited_table = st.data_editor(
+                df,
+                num_rows="fixed",  # Disallow adding/removing rows
+                use_container_width=True,
+                key="fuel_price_table_editor"
+            )
+
+            edited_table.to_csv(fuel_price_path, index=False)
+
+        else:
+            st.session_state.generator_fuel_price = st.number_input(
+                f"Fuel Price [USD/l]:", 
+                min_value=0.0, 
+                value=st.session_state.generator_fuel_price,
+            )
+
 
     st.write("Enter Generator parameters:")
     col1, col2 = st.columns(2)

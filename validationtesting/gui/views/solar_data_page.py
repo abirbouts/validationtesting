@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface
+from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface, time_format_timezone_selectors
 import datetime as dt
 import pytz
 import requests
@@ -94,51 +94,8 @@ def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: st
         return None
 
 
-def render_time_format_timezone_selectors() -> tuple:
-    # List of all available time zones with country names
-    timezones_with_countries = ["Universal Time Coordinated - UTC"] 
-    for country_code, timezones in pytz.country_timezones.items():
-        country_name = pytz.country_names[country_code]
-        for timezone in timezones:
-            timezones_with_countries.append(f"{country_name} - {timezone}")
-
-    # Common time formats to select from
-    TIME_FORMATS = [
-        "%Y-%m-%d",                # 2024-01-01
-        "%Y-%m-%d %H:%M:%S",        # 2024-01-01 12:00:00
-        "%d/%m/%Y",                 # 01/01/2024
-        "%d/%m/%Y %H:%M",           # 01/01/2024 12:00
-        "%m/%d/%Y",                 # 01/01/2024
-        "%m/%d/%Y %H:%M:%S",        # 01/01/2024 12:00:00
-        "%H:%M:%S",                 # 12:00:00
-        "%Y-%m-%dT%H:%M:%S",        # 2024-01-01T12:00:00 (ISO format)
-        "Other"                     # Allow user to enter a custom format
-    ]
-
-    # Select time format from common options
-    time_format_choice = st.selectbox("Select the time format of the CSV file:", TIME_FORMATS, index=1)
-
-    # If "Other" is selected, show a text input for custom time format
-    if time_format_choice == "Other":
-        time_format = st.text_input("Enter the custom time format:", value="%Y-%m-%d %H:%M:%S")
-    else:
-        time_format = time_format_choice
-
-    # Select time zone from a comprehensive list with country names
-    selected_timezone_with_country = st.selectbox("Select the time zone of the data (with country):", timezones_with_countries)
-
-    # Extract just the timezone (without the country name)
-    selected_timezone = selected_timezone_with_country.split(' - ')[1]
-
-    # Show the selected values for debugging/confirmation
-    st.write(f"Selected Time Format: {time_format}")
-    st.write(f"Selected Timezone: {selected_timezone_with_country}")
-
-    return time_format, selected_timezone
-
 def download_pvgis_pv_data(lat, lon) -> pd.DataFrame:
     URL = 'https://re.jrc.ec.europa.eu/api/tmy?lat=' + str(lat) + '&lon=' + str(lon) + '&outputformat=json'
-
     # Make the request
     response = requests.get(URL)
 
@@ -196,7 +153,7 @@ def irradiation_data() -> None:
             uploaded_file, delimiter, decimal = csv_upload_interface(f"solar")
             if uploaded_file:
                 with st.expander(f"Time", expanded=False):
-                    time_format, timezone = render_time_format_timezone_selectors()
+                    time_format, timezone = time_format_timezone_selectors()
                     time_data = load_timeseries_csv_with_timezone(uploaded_file, delimiter, decimal, time_format, timezone)
                 with st.expander(f"Data", expanded=False):
                                 # Dropdown for selecting the input type

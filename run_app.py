@@ -39,12 +39,6 @@ active_pages["General"] = [initial_page]
 
 if st.session_state.initialized:
     if st.session_state.new_project_completed:
-        general_page = st.Page(
-            page=general,
-            title="General",
-            icon="🔧",
-        )
-        active_pages["General"].append(general_page)
 
         component_selection_page = st.Page(
             page=component_selection,
@@ -53,6 +47,13 @@ if st.session_state.initialized:
         )
         active_pages["General"].append(component_selection_page)
 
+        general_page = st.Page(
+            page=general,
+            title="General",
+            icon="🔧",
+        )
+        active_pages["General"].append(general_page)
+
         if st.session_state.solar_pv:
             solar_pv_page = st.Page(
                 page=solar_pv,
@@ -60,22 +61,25 @@ if st.session_state.initialized:
                 icon="☀️",
             )
 
-            irradiation_data_page = st.Page(
-                page=irradiation_data,
-                title="Irradiation Data",
-                icon="📊",
-            )
+            active_pages["Solar PV"] = [solar_pv_page]
 
-            def upload_solar_model_output():
-                upload_model_output('solar_pv')
+            if st.session_state.technical_validation:
+                irradiation_data_page = st.Page(
+                    page=irradiation_data,
+                    title="Irradiation Data",
+                    icon="📊",
+                )
 
-            upload_solar_model_output_page = st.Page(
-                page=upload_solar_model_output,
-                title="Upload Solar Model Output",
-                icon="📤",
-            )
+                def upload_solar_model_output():
+                    upload_model_output('solar_pv')
 
-            active_pages["Solar PV"] = [solar_pv_page, irradiation_data_page, upload_solar_model_output_page]
+                upload_solar_model_output_page = st.Page(
+                    page=upload_solar_model_output,
+                    title="Upload Solar Model Output",
+                    icon="📤",
+                )
+
+                active_pages["Solar PV"] = [solar_pv_page, irradiation_data_page, upload_solar_model_output_page]
 
 
         if st.session_state.wind:
@@ -85,22 +89,26 @@ if st.session_state.initialized:
                 icon="🌀",
             )
 
-            wind_data_page = st.Page(
-                page=wind_data,
-                title="Wind Data",
-                icon="📊",
-            )
+            active_pages["Wind"] = [wind_page]
 
-            def upload_wind_model_output():
-                upload_model_output('wind')
+            if st.session_state.technical_validation:
 
-            upload_wind_model_output_page = st.Page(
-                page=upload_wind_model_output,
-                title="Upload Wind Model Output",
-                icon="📤",
-            )
+                wind_data_page = st.Page(
+                    page=wind_data,
+                    title="Wind Data",
+                    icon="📊",
+                )
 
-            active_pages["Wind"] = [wind_page, wind_data_page, upload_wind_model_output_page]
+                def upload_wind_model_output():
+                    upload_model_output('wind')
+
+                upload_wind_model_output_page = st.Page(
+                    page=upload_wind_model_output,
+                    title="Upload Wind Model Output",
+                    icon="📤",
+                )
+
+                active_pages["Wind"] = [wind_page, wind_data_page, upload_wind_model_output_page]
 
         if st.session_state.generator:
             generator_page = st.Page(
@@ -109,16 +117,20 @@ if st.session_state.initialized:
                 icon="⚙️",
             )
 
-            def upload_generator_model_output():
-                upload_model_output('generator')
+            active_pages["Generator"] = [generator_page]
 
-            upload_generator_model_output_page = st.Page(
-                page=upload_generator_model_output,
-                title="Upload Generator Model Output",
-                icon="📤",
-            )
+            if st.session_state.technical_validation:
 
-            active_pages["Generator"] = [generator_page, upload_generator_model_output_page]
+                def upload_generator_model_output():
+                    upload_model_output('generator')
+
+                upload_generator_model_output_page = st.Page(
+                    page=upload_generator_model_output,
+                    title="Upload Generator Model Output",
+                    icon="📤",
+                )
+
+                active_pages["Generator"] = [generator_page, upload_generator_model_output_page]
 
         if st.session_state.battery:
             battery_page = st.Page(
@@ -127,16 +139,20 @@ if st.session_state.initialized:
                 icon="🔋",
             )
 
-            def upload_battery_model_output():
-                upload_model_output('battery')
+            active_pages["Battery"] = [battery_page]
 
-            upload_battery_model_output_page = st.Page(
-                page=upload_battery_model_output,
-                title="Upload Battery Model Output",
-                icon="📤",
-            )
+            if st.session_state.technical_validation:
 
-            active_pages["Battery"] = [battery_page, upload_battery_model_output_page]
+                def upload_battery_model_output():
+                    upload_model_output('battery')
+
+                upload_battery_model_output_page = st.Page(
+                    page=upload_battery_model_output,
+                    title="Upload Battery Model Output",
+                    icon="📤",
+                )
+
+                active_pages["Battery"] = [battery_page, upload_battery_model_output_page]
 
         run_page = st.Page(
             page=run_model,

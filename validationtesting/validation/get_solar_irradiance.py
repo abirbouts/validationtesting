@@ -1,21 +1,21 @@
 import streamlit as st
 import pandas as pd
-from math import radians as rad, sin, cos, acos, degrees
+from math import radians as rad, sin, cos, acos, degrees, pi
 import datetime
 import logging
 from config.path_manager import PathManager
+import numpy as np
 
 def with_GHI_DHI(
     theta_tilt: float, 
     GHI: float, 
     DHI: float, 
     rho: float, 
-    phi_lat: float, 
-    phi_lon: float, 
-    days_this_year: int, 
+    lat: float, 
+    lon: float,
     day_of_year: int, 
     UTC_time: float, 
-    albedo: bool) -> float:
+    azimuth: float) -> float:
     """
     Calculate the total solar irradiance on a tilted surface using Global Horizontal Irradiance (GHI) 
     and Diffuse Horizontal Irradiance (DHI).
@@ -34,67 +34,63 @@ def with_GHI_DHI(
     float: Total solar irradiance on the tilted surface in W/m^2.
     """
 
-    theta_tilt = rad(theta_tilt)
-    phi_lat = rad(phi_lat)
-    phi_lon = rad(phi_lon)
+    rad_theta_tilt = rad(theta_tilt)
+    rad_lat = rad(lat)
+    rad_lon = rad(lon)
+    rad_azimuth = rad(azimuth)
     
-    B = (360/days_this_year) * (day_of_year-81) # day angle
-    B = rad(B)  
+    B = 360 * ((day_of_year-1)/365) # day angle
+    rad_B = rad(B)  
     
-    delta = 23.45 * sin(B)  # solar declination angle
-    delta = rad(delta)
+    delta = 23.45 * sin(rad(360*((284+day_of_year)/365)))  # solar declination angle
+    rad_delta = rad(delta)
     
-    EOT = 9.87 * sin(2 * B) - 7.53 * cos(B) - 1.5 * sin(B)  # equation of time
+    EOT = 229.2 * (0.000075 + 0.001868 * cos(rad_B) - 0.032077 * sin(rad_B) - 0.014615 * cos(2 * rad_B) - 0.04089 * sin(2 * rad_B))  # equation of time
     
-    LST = UTC_time + phi_lon / 15 + EOT / 60  # local solar time
+    LST = UTC_time + lon / 15 + EOT / 60  # local solar time
     
     omega = 15 * (LST - 12)  # hour angle
-    omega = rad(omega)
+    rad_omega = rad(omega)
     
     # Solar zenith angle (theta_z)
-    theta_z = sin(phi_lat) * sin(delta) + cos(phi_lat) * cos(delta) * cos(omega)
-    theta_z = acos(theta_z)
-    
+    cos_theta_z = sin(rad_lat) * sin(rad_delta) + cos(rad_lat) * cos(rad_delta) * cos(rad_omega)
+    rad_theta_z = acos(cos_theta_z)
+
     # Direct Normal Irradiance (DNI)
-    DNI = cos(theta_z) * GHI - DHI
-    
-    # Azimuth and sun angles
-    phi_sun = (sin(delta) * cos(phi_lat) - cos(delta) * sin(phi_lat) * cos(omega)) / sin(theta_z)
-    phi_sun = acos(phi_sun)
-    
-    cos_phi_azimuth = (sin(delta) * cos(phi_lat) - cos(delta) * sin(phi_lat) * cos(omega)) / cos(theta_z)
-    cos_phi_azimuth = max(min(cos_phi_azimuth, 1), -1)  # Ensure within [-1, 1] to avoid math domain errors
-    
-    if omega < 0:
-        phi_azimuth = degrees(acos(cos_phi_azimuth)) 
+    if cos_theta_z > 0.1:
+        DNI = (GHI - DHI) / cos(rad_theta_z)
     else:
-        phi_azimuth = 360 - degrees(acos(cos_phi_azimuth))  
+        DNI = 0
         
+    rad_azimuth_sun = np.sign(omega) * abs((acos((cos(rad_theta_z) * sin(rad_lat) - sin(rad_delta)) / (sin(rad_theta_z) * cos(rad_lat)))))  # solar azimuth angle
+
     # Angle of incidence (theta_inc)
     cos_theta_inc = (
-        sin(delta) * sin(phi_lat) * cos(theta_tilt) -
-        sin(delta) * cos(phi_lat) * sin(theta_tilt) * cos(rad(phi_azimuth) - phi_sun) +
-        cos(delta) * cos(phi_lat) * cos(theta_tilt) * cos(omega) +
-        cos(delta) * sin(omega) * sin(theta_tilt) * cos(rad(phi_azimuth) - phi_sun)
+        sin(rad_delta) * sin(rad_lat) * cos(rad_theta_tilt) -
+        sin(rad_delta) * cos(rad_lat) * sin(rad_theta_tilt) * cos(rad_azimuth) +
+        cos(rad_delta) * cos(rad_lat) * cos(rad_theta_tilt) * cos(rad_omega) +
+        cos(rad_delta) * sin(rad_lat) * sin(rad_theta_tilt) * cos(rad_azimuth) * cos(rad_omega) +
+        cos(rad_delta) * sin(rad_omega) * sin(rad_theta_tilt) * sin(rad_azimuth)
     )
+
     cos_theta_inc = max(-1, min(1, cos_theta_inc))  # Clamp to [-1, 1]
-    theta_inc = acos(cos_theta_inc)
+    rad_theta_inc = acos(cos_theta_inc)
+        
+    # Direct beam irradiance (I_beam)
+    I_beam = DNI * cos(rad_theta_inc)
     
-    # Direct beam irradiance (G_b)
-    G_b = DNI * cos(theta_inc)
+    # Diffuse irradiance (I_diffuse)
+    I_diffuse = DHI * ((1 + cos(rad_theta_tilt)) / 2)
     
-    # Diffuse irradiance (G_d)
-    G_d = DHI * ((1 + cos(theta_tilt)) / 2)
-    
+    # Ground-reflected irradiance (I_reflected)
+    I_reflected = GHI * rho * ((1 - cos(rad_theta_tilt)) / 2)
+
     # Total irradiance
-    G_total = G_b + G_d
-    
-    # Add ground-reflected irradiance if albedo is True
-    if albedo:
-        G_r = GHI * rho * ((1 - cos(theta_tilt)) / 2)
-        G_total += G_r
-    
-    return G_total
+    I_total = I_beam + I_diffuse + I_reflected
+    if day_of_year == 130:
+        logging.info(f"theta_tilt: {theta_tilt}, GHI: {GHI}, DHI: {DHI}, rho: {rho}, lat: {lat}, lon: {lon}, day_of_year: {day_of_year}, UTC_time: {UTC_time}, azimuth: {azimuth}")
+        logging.info(f"I_beam: {I_beam}, I_diffuse: {I_diffuse}, I_reflected: {I_reflected}, I_total: {I_total}")
+    return I_total
 
 
 def with_DNI_DHI(

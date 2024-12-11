@@ -1,6 +1,6 @@
 import streamlit as st
 from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface
+from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface, timezone_selector
 import datetime as dt
 import pytz
 import pandas as pd
@@ -44,9 +44,9 @@ def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str) -
         return None
     
 
-@st.dialog("Enter Battery Specifications")
+@st.dialog("Enter Wind Energy Specifications")
 def enter_specifications(i: int) -> None:
-    st.write(f"Enter Battery Specifications for Type {i+1}.")
+    st.write(f"Enter Wind Energy Specifications for Type {i+1}.")
 
     # Initialize wind_lifetime if necessary
     if len(st.session_state.wind_lifetime) < st.session_state.num_wind_types:
@@ -57,79 +57,92 @@ def enter_specifications(i: int) -> None:
         key=f"wind_lifetime_{i}"
     )
 
-    # Initialize wind_rated_power if necessary
-    if len(st.session_state.wind_rated_power) < st.session_state.num_wind_types:
-        st.session_state.wind_rated_power.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_rated_power)))
-    st.session_state.wind_rated_power[i] = st.number_input(f"Rated Power [W]:", 
-        min_value=0.0, 
-        value=st.session_state.wind_rated_power[i],
-        key=f"wind_rated_power_{i}"
-    )
+    if st.session_state.technical_validation:
 
-    # Initialize wind_drivetrain_efficiency if necessary
-    if len(st.session_state.wind_drivetrain_efficiency) < st.session_state.num_wind_types:
-        st.session_state.wind_drivetrain_efficiency.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_drivetrain_efficiency)))
-    st.session_state.wind_drivetrain_efficiency[i] = st.number_input(f"Drive Train Efficiency [%]:", 
-        min_value=0.0,
-        value=st.session_state.wind_drivetrain_efficiency[i],
-        key=f"wind_drivetrain_efficiency_{i}"
-    )
-    st.session_state.wind_inverter_efficiency = [98.0]
-    # Initialize wind_inverter_efficiency if necessary
-    if len(st.session_state.wind_inverter_efficiency) < st.session_state.num_wind_types:
-        st.session_state.wind_inverter_efficiency.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_inverter_efficiency)))
-    st.session_state.wind_inverter_efficiency[i] = st.number_input(f"Inverter Efficiency [%]:", 
-        min_value=0.0,
-        value=st.session_state.wind_inverter_efficiency[i],
-        key=f"wind_inverter_efficiency_{i}"
-    )
-
-    # Initialize wind_hub_height if necessary
-    if len(st.session_state.wind_hub_height) < st.session_state.num_wind_types:
-        st.session_state.wind_hub_height.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_hub_height)))
-    st.session_state.wind_hub_height[i] = st.number_input(f"Hub Height [m]:", 
-        min_value=0.0, 
-        value=st.session_state.wind_hub_height[i],
-        key=f"wind_hub_height_{i}"
-    )
-
-    if st.session_state.wind_temporal_degradation:
-        # Initialize wind_temporal_degradation_rate if necessary
-        if len(st.session_state.wind_temporal_degradation_rate) < st.session_state.num_wind_types:
-            st.session_state.wind_temporal_degradation_rate.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_temporal_degradation_rate)))
-        st.session_state.wind_temporal_degradation_rate[i] = st.number_input(
-            f"Degradation Rate [%/year]:", 
+        # Initialize wind_rated_power if necessary
+        if len(st.session_state.wind_rated_power) < st.session_state.num_wind_types:
+            st.session_state.wind_rated_power.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_rated_power)))
+        st.session_state.wind_rated_power[i] = st.number_input(f"Rated Power [W]:", 
             min_value=0.0, 
-            value=st.session_state.wind_temporal_degradation_rate[i],
-            key=f"wind_degradation_rate_{i}"
+            value=st.session_state.wind_rated_power[i],
+            key=f"wind_rated_power_{i}"
         )
 
-    project_name = st.session_state.get("project_name")
-    wind_power_curve_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"wind_power_curve_type_{i+1}.csv"
-    if len(st.session_state.wind_power_curve_uploaded) < st.session_state.num_wind_types:
-        st.session_state.wind_power_curve_uploaded.extend([False] * (st.session_state.num_wind_types - len(st.session_state.wind_power_curve_uploaded)))
-    if st.session_state.wind_power_curve_uploaded[i]:
-        # Load the uploaded CSV file into a DataFrame
-        df = pd.read_csv(wind_power_curve_path)
-    else:
-        selected_upload_type = st.selectbox(
-            f"Select the way to upload the power curve", 
-            ['Enter manually', 'Upload a CSV file'])
-        if selected_upload_type == 'Enter manually':
-        # If no file is uploaded, create a default DataFrame
-            df = pd.DataFrame({
-                'Wind Speed [m/s]': [],
-                'Power [W]': []
-            })
-        elif selected_upload_type == 'Upload a CSV file':
-            uploaded_file, delimiter, decimal = csv_upload_interface(f"power_curve_{i}")
-            if uploaded_file:
-                data_dict = {}
-                wind_speed_power_curve = load_csv_data(uploaded_file, delimiter, decimal, f'Wind Speed [m/s]')
-                power_power_curve = load_csv_data(uploaded_file, delimiter, decimal, f'Power [W]')
-                data_dict[f'Wind Speed [m/s]'] = wind_speed_power_curve.values.flatten() if wind_speed_power_curve is not None else None
-                data_dict[f'Power [W]'] = power_power_curve.values.flatten() if power_power_curve is not None else None
-                df = pd.DataFrame(data_dict)
+        # Initialize wind_drivetrain_efficiency if necessary
+        if len(st.session_state.wind_drivetrain_efficiency) < st.session_state.num_wind_types:
+            st.session_state.wind_drivetrain_efficiency.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_drivetrain_efficiency)))
+        st.session_state.wind_drivetrain_efficiency[i] = st.number_input(f"Drive Train Efficiency [%]:", 
+            min_value=0.0,
+            value=st.session_state.wind_drivetrain_efficiency[i],
+            key=f"wind_drivetrain_efficiency_{i}"
+        )
+        st.session_state.wind_inverter_efficiency = [98.0]
+        # Initialize wind_inverter_efficiency if necessary
+        if len(st.session_state.wind_inverter_efficiency) < st.session_state.num_wind_types:
+            st.session_state.wind_inverter_efficiency.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_inverter_efficiency)))
+        st.session_state.wind_inverter_efficiency[i] = st.number_input(f"Inverter Efficiency [%]:", 
+            min_value=0.0,
+            value=st.session_state.wind_inverter_efficiency[i],
+            key=f"wind_inverter_efficiency_{i}"
+        )
+
+        # Initialize wind_hub_height if necessary
+        if len(st.session_state.wind_hub_height) < st.session_state.num_wind_types:
+            st.session_state.wind_hub_height.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_hub_height)))
+        st.session_state.wind_hub_height[i] = st.number_input(f"Hub Height [m]:", 
+            min_value=0.0, 
+            value=st.session_state.wind_hub_height[i],
+            key=f"wind_hub_height_{i}"
+        )
+
+        if st.session_state.wind_temporal_degradation:
+            # Initialize wind_temporal_degradation_rate if necessary
+            if len(st.session_state.wind_temporal_degradation_rate) < st.session_state.num_wind_types:
+                st.session_state.wind_temporal_degradation_rate.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_temporal_degradation_rate)))
+            st.session_state.wind_temporal_degradation_rate[i] = st.number_input(
+                f"Degradation Rate [%/year]:", 
+                min_value=0.0, 
+                value=st.session_state.wind_temporal_degradation_rate[i],
+                key=f"wind_degradation_rate_{i}"
+            )
+
+        project_name = st.session_state.get("project_name")
+        wind_power_curve_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"wind_power_curve_type_{i+1}.csv"
+        if len(st.session_state.wind_power_curve_uploaded) < st.session_state.num_wind_types:
+            st.session_state.wind_power_curve_uploaded.extend([False] * (st.session_state.num_wind_types - len(st.session_state.wind_power_curve_uploaded)))
+        if st.session_state.wind_power_curve_uploaded[i]:
+            # Load the uploaded CSV file into a DataFrame
+            df = pd.read_csv(wind_power_curve_path)
+        else:
+            selected_upload_type = st.selectbox(
+                f"Select the way to upload the power curve", 
+                ['Enter manually', 'Upload a CSV file'])
+            if selected_upload_type == 'Enter manually':
+            # If no file is uploaded, create a default DataFrame
+                df = pd.DataFrame({
+                    'Wind Speed [m/s]': [],
+                    'Power [W]': []
+                })
+            elif selected_upload_type == 'Upload a CSV file':
+                uploaded_file, delimiter, decimal = csv_upload_interface(f"power_curve_{i}")
+                if uploaded_file:
+                    data_dict = {}
+                    wind_speed_power_curve = load_csv_data(uploaded_file, delimiter, decimal, f'Wind Speed [m/s]')
+                    data_dict[f'Wind Speed [m/s]'] = wind_speed_power_curve.values.flatten() if wind_speed_power_curve is not None else None
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        power_power_curve = load_csv_data(uploaded_file, delimiter, decimal, f'Power')
+                    with col2:
+                        energy_unit = st.selectbox(
+                                f"Select the unit of the Power:",
+                                ['W', 'kW', 'MW']
+                            ) 
+                        if energy_unit == 'kW':
+                            power_power_curve = power_power_curve * 1e3
+                        elif energy_unit == 'MW':
+                            power_power_curve = power_power_curve * 1e6
+                    data_dict[f'Power [W]'] = power_power_curve.values.flatten() if power_power_curve is not None else None
+                    df = pd.DataFrame(data_dict)
         if st.session_state.wind_power_curve_uploaded[i] or selected_upload_type == 'Enter manually' or uploaded_file:
             # Display the table for editing
             edited_table = st.data_editor(
@@ -139,28 +152,34 @@ def enter_specifications(i: int) -> None:
                 key="csv_table_editor"
             )
 
+    if st.session_state.economic_validation:
+        # wind Investment Cost
+        if len(st.session_state.wind_investment_cost) != st.session_state.num_wind_types:
+            st.session_state.wind_investment_cost = [0.0] * st.session_state.num_wind_types
+        st.session_state.wind_investment_cost[i] = st.number_input(
+            f"Investment Cost [USD]:", 
+            min_value=0.0, 
+            value=st.session_state.wind_investment_cost[i],
+            key=f"wind_investment_cost_{i}"
+        )
+
+        # wind Yearly Operation and Maintenance Cost
+        if len(st.session_state.wind_maintenance_cost) != st.session_state.num_wind_types:
+            st.session_state.wind_maintenance_cost = [0.0] * st.session_state.num_wind_types
+        st.session_state.wind_maintenance_cost[i] = st.number_input(
+            f"Yearly Operation and Maintenance Cost [USD/year]:", 
+            min_value=0.0, 
+            value=st.session_state.wind_maintenance_cost[i],
+            key=f"wind_maintenance_cost_{i}"
+        )
+
     if st.button("Close"):
-        # Store the combined data in session state
-        st.session_state.wind_power_curve_uploaded[i] = True  # Set the flag to True since data is now uploaded
-        sorted_table = edited_table.sort_values(by='Wind Speed [m/s]')
-        sorted_table.to_csv(wind_power_curve_path, index=False)
+        if st.session_state.technical_validation:
+            # Store the combined data in session state
+            st.session_state.wind_power_curve_uploaded[i] = True  # Set the flag to True since data is now uploaded
+            sorted_table = edited_table.sort_values(by='Wind Speed [m/s]')
+            sorted_table.to_csv(wind_power_curve_path, index=False)
         st.rerun()
-
-def render_timezone_selector() -> str:
-    # List of all available time zones with country names
-    timezones_with_countries = ["Universal Time Coordinated - UTC"]  # Manually add UTC at the beginning
-    for country_code, timezones in pytz.country_timezones.items():
-        country_name = pytz.country_names[country_code]
-        for timezone in timezones:
-            timezones_with_countries.append(f"{country_name} - {timezone}")
-
-    # Select time zone from a comprehensive list with country names
-    selected_timezone_with_country = st.selectbox("Select the time zone for the installation dates:", timezones_with_countries)
-
-    # Extract just the timezone (without the country name)
-    selected_timezone = selected_timezone_with_country.split(' - ')[1]
-
-    return selected_timezone
 
 # Function to convert installation dates to UTC
 def convert_dates_to_utc(installation_dates: list, timezone_str: str) -> list:
@@ -197,7 +216,7 @@ def wind() -> None:
         st.session_state.wind_installation_dates = [dt.datetime.now() for _ in range(st.session_state.wind_num_units)]
 
     with st.expander(f"Installation Dates", expanded=False):
-        st.session_state.selected_timezone_wind = render_timezone_selector()
+        st.session_state.selected_timezone_wind = timezone_selector()
         if st.session_state.wind_num_units > 1:
             # Checkbox to determine if the installation date is the same for all units
             st.session_state.wind_same_date = st.checkbox("Same installation date for all units", value=st.session_state.wind_same_date)
@@ -311,7 +330,8 @@ def wind() -> None:
         st.session_state.wind_types = ['Type 1']        
         st.session_state.wind_type[0] = st.session_state.wind_types[0]
 
-    st.session_state.wind_temporal_degradation = st.checkbox("Temporal wind turbine degradation", value=st.session_state.wind_temporal_degradation)
+    if st.session_state.technical_validation:
+        st.session_state.wind_temporal_degradation = st.checkbox("Temporal wind turbine degradation", value=st.session_state.wind_temporal_degradation)
 
     st.write("Enter the specifications for each wind turbine type:")
     col1, col2 = st.columns(2)
