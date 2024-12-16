@@ -43,7 +43,7 @@ def cost_validation() -> None:
     if st.session_state.battery:
         used_components.append("battery")
 
-    economic_validation = pd.DataFrame(columns=["Component", "Unit", "LCOE [$/kWh]", "Discounted Energy [kWh]", "Total Discounted Cost [$]", "Discounted Investment Cost [$]", "Discounted Operation Cost [$]", "Discounted Salvage Value [$]", "Discounted Fuel Cost [$]"])
+    economic_validation = pd.DataFrame(columns=["Component", "Unit", "LCOE [$/kWh]", "Discounted Used Energy [kWh]", "Total Discounted Cost [$]", "Discounted Investment Cost [$]", "Discounted Operation Cost [$]", "Discounted Salvage Value [$]", "Discounted Fuel Cost [$]"])
     project_name = st.session_state.get("project_name")
 
     if st.session_state.solar_pv:
@@ -174,13 +174,16 @@ def cost_validation() -> None:
             discounted_fuel_cost = 0
             for unit in range(st.session_state[f'{component}_num_units']):
                 if component == "solar_pv" or component == "wind":
-                    discounted_energy = energy_df[f'Benchmark {component} Discounted Energy Unit {unit+1} [Wh]'].sum()
+                    if st.session_state[f'solar_pv_curtailment'][unit]:
+                        discounted_energy = energy_df[f'Benchmark {component} Discounted Used Energy Unit {unit+1} [Wh]'].sum()
+                    else:
+                        discounted_energy = energy_df[f'Benchmark {component} Discounted Energy Unit {unit+1} [Wh]'].sum()
                 else: 
                     discounted_energy = energy_df[f'Model {component} Discounted Energy Unit {unit+1} [Wh]'].sum()
                 if component == "generator":
                     discounted_fuel_cost = energy_df[f'Benchmark Discounted Fuel Cost generator Unit {unit+1} [$]'].sum()
                     economic_validation.loc[(economic_validation['Component'] == component) & (economic_validation['Unit'] == unit+1), "Discounted Fuel Cost [$]"] = discounted_fuel_cost
-                economic_validation.loc[(economic_validation['Component'] == component) & (economic_validation['Unit'] == unit+1), "Discounted Energy [kWh]"] = discounted_energy / 1000
+                economic_validation.loc[(economic_validation['Component'] == component) & (economic_validation['Unit'] == unit+1), "Discounted Used Energy [kWh]"] = discounted_energy / 1000
                 discounted_investment_cost = economic_validation.loc[(economic_validation['Component'] == component) & (economic_validation['Unit'] == unit+1), "Discounted Investment Cost [$]"].values[0]
                 discounted_operation_cost = economic_validation.loc[(economic_validation['Component'] == component) & (economic_validation['Unit'] == unit+1), "Discounted Operation Cost [$]"].values[0]
                 discounted_salvage_value = economic_validation.loc[(economic_validation['Component'] == component) & (economic_validation['Unit'] == unit+1), "Discounted Salvage Value [$]"].values[0]
@@ -188,13 +191,13 @@ def cost_validation() -> None:
                 if not component == "battery":
                     economic_validation.loc[(economic_validation['Component'] == component) & (economic_validation['Unit'] == unit+1), "LCOE [$/kWh]"] = (discounted_investment_cost + discounted_operation_cost - discounted_salvage_value + discounted_fuel_cost) / (discounted_energy/1000)
             if component == "solar_pv" or component == "wind":
-                discounted_energy = energy_df[f'Benchmark {component} Discounted Energy Total [Wh]'].sum()
+                discounted_energy = energy_df[f'Benchmark {component} Discounted Used Energy Total [Wh]'].sum()
             else:
                 discounted_energy = energy_df[f'Model {component} Discounted Energy Total [Wh]'].sum()
                 if component == "generator":
                     discounted_fuel_cost = energy_df[f'Benchmark Discounted Fuel Cost generator Total [$]'].sum()
                     economic_validation.loc[(economic_validation['Component'] == component) & (economic_validation['Unit'] == 'Total'), "Discounted Fuel Cost [$]"] = discounted_fuel_cost
-            economic_validation.loc[(economic_validation['Component'] == component) & (economic_validation['Unit'] == "Total"), "Discounted Energy [kWh]"] = discounted_energy / 1000
+            economic_validation.loc[(economic_validation['Component'] == component) & (economic_validation['Unit'] == "Total"), "Discounted Used Energy [kWh]"] = discounted_energy / 1000
             discounted_investment_cost = economic_validation.loc[(economic_validation['Component'] == component) & (economic_validation['Unit'] == "Total"), "Discounted Investment Cost [$]"].values[0]
             discounted_operation_cost = economic_validation.loc[(economic_validation['Component'] == component) & (economic_validation['Unit'] == "Total"), "Discounted Operation Cost [$]"].values[0]
             discounted_salvage_value = economic_validation.loc[(economic_validation['Component'] == component) & (economic_validation['Unit'] == "Total"), "Discounted Salvage Value [$]"].values[0]
@@ -208,14 +211,14 @@ def cost_validation() -> None:
     total_discounted_operation_cost = economic_validation.loc[economic_validation['Unit'] == 'Total', 'Discounted Operation Cost [$]'].sum()
     total_discounted_salvage_value = economic_validation.loc[economic_validation['Unit'] == 'Total', 'Discounted Salvage Value [$]'].sum()
     discounted_fuel_cost = economic_validation.loc[economic_validation['Unit'] == 'Total', 'Discounted Fuel Cost [$]'].sum()
-    discounted_energy = economic_validation.loc[economic_validation['Unit'] == 'Total', 'Discounted Energy [kWh]'].sum()
+    discounted_energy = economic_validation.loc[economic_validation['Unit'] == 'Total', 'Discounted Used Energy [kWh]'].sum()
     total_lcoe = (total_discounted_investment_cost + total_discounted_operation_cost - total_discounted_salvage_value + discounted_fuel_cost) / discounted_energy 
 
     economic_validation = pd.concat([economic_validation, pd.DataFrame([{
         "Component": "Total", 
         "Unit": "Total", 
         "LCOE [$/kWh]": total_lcoe,
-        "Discounted Energy [kWh]": discounted_energy,
+        "Discounted Used Energy [kWh]": discounted_energy,
         "Total Discounted Cost [$]": total_discounted_cost,
         "Discounted Investment Cost [$]": total_discounted_investment_cost, 
         "Discounted Operation Cost [$]": total_discounted_operation_cost,

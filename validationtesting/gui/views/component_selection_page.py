@@ -29,3 +29,4 @@ def component_selection() -> None:
     with col2:
         st.session_state.technical_validation = st.toggle("⚙️Technical Validation", value=st.session_state.technical_validation)
         st.session_state.economic_validation = st.toggle("💵Economic Validation", value=st.session_state.economic_validation) 
+        st.session_state.energy_balance = st.toggle("⚖️Energy Balance", value=st.session_state.energy_balance)

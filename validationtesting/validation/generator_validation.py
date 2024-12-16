@@ -36,9 +36,9 @@ def get_efficiency_from_tabular(load: float, type_int: int) -> float:
     
     return interpolated_efficiency
 
-def get_efficiency_from_formula(generator_energy: float, type_int: int) -> float:
+def get_efficiency_from_formula(generator_energy: float, type: int) -> float:
     # Get the formula for the specified generator type
-    formula = st.session_state.generator_efficiency_formula[type_int - 1]  # Example: "100 * (P / 20.0)"
+    formula = st.session_state.generator_efficiency_formula[type]  # Example: "100 * (P / 20.0)"
     
     # Ensure `P` in the formula represents the generator power value
     try:
@@ -144,28 +144,27 @@ def generator_validation_testing() -> None:
             for i in range(0, len(generator_data)):
                 time = generator_data.loc[i, 'UTC Time']
                 time = datetime.datetime.strptime(time, '%Y-%m-%d %H:%M:%S')
-                type = generator_type[unit]
-                type_int = int(type.replace("Type ", ""))
-                if installation_dates[unit] > time or installation_dates[unit].replace(year=installation_dates[unit].year + lifetime[type_int-1]) < time:
+                type = int(generator_type[unit].replace("Type ", "")) - 1
+                if installation_dates[unit] > time or installation_dates[unit].replace(year=installation_dates[unit].year + lifetime[type]) < time:
                     max_power = 0
                     min_power = 0
                 else:
-                    max_power = max_powers[type_int-1]
-                    min_power = min_powers[type_int-1]
+                    max_power = max_powers[type]
+                    min_power = min_powers[type]
                 generator_energy = generator_data.loc[i, f'Model generator Energy Unit {unit + 1} [Wh]']
                 generator_data.loc[i, f'Model generator Discounted Energy Unit {unit + 1} [Wh]'] = generator_energy / ((1 + discount_rate) ** ((time - start_date).days / 365))
                 generator_data.loc[i, 'Model generator Discounted Energy Total [Wh]'] += generator_data.loc[i, f'Model generator Discounted Energy Unit {unit + 1} [Wh]'] 
                 if dynamic_efficiency:
-                    if dynamic_efficiency_type[type_int-1] == "Tabular Data":
-                        efficiency = get_efficiency_from_tabular(generator_energy, type_int)
+                    if dynamic_efficiency_type[type] == "Tabular Data":
+                        efficiency = get_efficiency_from_tabular(generator_energy, type + 1)
                     else:
-                        efficiency = get_efficiency_from_formula(generator_energy, type_int)
+                        efficiency = get_efficiency_from_formula(generator_energy, type)
                 else:
-                    efficiency = initial_efficiency[type_int-1]
+                    efficiency = initial_efficiency[type]
                 if temporal_degradation:
-                    efficiency = temporal_degradation_efficiency(efficiency, temporal_degradation_rate[type_int-1], time.date(), installation_dates[unit])
+                    efficiency = temporal_degradation_efficiency(efficiency, temporal_degradation_rate[type], time.date(), installation_dates[unit])
                 else:
-                    efficiency = initial_efficiency[type_int-1]
+                    efficiency = initial_efficiency[type]
                 if variable_fuel_price:
                     try:
                         fuel_price = fuel_price_df.loc[fuel_price_df['Year'] == time.year, 'Fuel Price [$/l]'].values[0]
@@ -196,33 +195,75 @@ def generator_validation_testing() -> None:
                 generator_data.loc[i, f"Check Fuel Consumption Unit {unit+1}"] = (abs(((generator_data.loc[i, f'Model Fuel Consumption Unit {unit + 1} [l]']-generator_data.loc[i, f'Benchmark Fuel Consumption generator Unit {unit + 1} [l]'])/generator_data.loc[i, f'Benchmark Fuel Consumption generator Unit {unit + 1} [l]'])) < 0.01)
                 false_count_fuel_consumption = (generator_data[f"Check Fuel Consumption Unit {unit+1}"] == False).sum()
                 logging.info(f'For Unit {unit+1} the fuel consumption does not match the energy output for {false_count_fuel_consumption} (out of {len(generator_data)}) timestamps')
-    else:
-        for i in range(0, len(generator_data)):
-            time = generator_data.loc[i, 'UTC Time']
-            time = datetime.datetime.strptime(time, '%Y-%m-%d %H:%M:%S')
-            total_efficiency = sum(initial_efficiency[int(generator_type[unit].replace("Type ", "")) - 1] for unit in range(num_units)) / num_units
-            if dynamic_efficiency:
-                total_efficiency = sum(get_efficiency_from_tabular(generator_data.loc[i, f'Model generator Energy Unit {unit + 1} [Wh]'], int(generator_type[unit].replace("Type ", ""))) if dynamic_efficiency_type[int(generator_type[unit].replace("Type ", "")) - 1] == "Tabular Data" else get_efficiency_from_formula(generator_data.loc[i, f'Model generator Energy Unit {unit + 1} [Wh]'], int(generator_type[unit].replace("Type ", ""))) for unit in range(num_units)) / num_units
-            if temporal_degradation:
-                total_efficiency = sum(temporal_degradation_efficiency(total_efficiency, temporal_degradation_rate[int(generator_type[unit].replace("Type ", "")) - 1], time.date(), installation_dates[unit]) for unit in range(num_units)) / num_units
-            generator_data.loc[i, 'Power Constraints Total'] = all(test_power_limits(generator_data.loc[i, f'Model generator Energy Unit {unit + 1} [Wh]'], max_powers[int(generator_type[unit].replace("Type ", "")) - 1], min_powers[int(generator_type[unit].replace("Type ", "")) - 1]) for unit in range(num_units))
-            false_count_power_constraints = (generator_data['Power Constraints Total'] == False).sum()
-            logging.info(f'There are {false_count_power_constraints} (out of {len(generator_data)}) timestamps where the power was not in boundaries (minimum and maximum power)')
-            generator_data.loc[i, 'Benchmark Fuel Consumption generator Total [l]'] = get_fuel_consumption(total_power, lhv, total_efficiency)
+    if scope == "Total":
+        efficiencies = []
+        max_powers = []
+        min_powers = []
+        for i, row in generator_data.iterrows():
+            time = pd.to_datetime(row['UTC Time'])
+            total_efficiency = 0
+            total_energy = 0
+            total_capacity = 0
+            total_min_power = 0
+            total_max_power = 0
+
+            for unit in range(num_units):
+                type = int(generator_type[unit].replace("Type ", "")) - 1
+
+                if installation_dates[unit] > time or installation_dates[unit].replace(year=installation_dates[unit].year + lifetime[type]) < time:
+                    max_power = 0
+                    min_power = 0
+                    efficiency = 0
+                else:
+                    max_power = max_powers[type]
+                    min_power = min_powers[type]
+                    efficiency = initial_efficiency[type]
+
+                if dynamic_efficiency:
+                    if dynamic_efficiency_type[type] == "Tabular Data":
+                        efficiency = get_efficiency_from_tabular(row[f'Model generator Energy Unit {unit + 1} [Wh]'], type + 1)
+                    else:
+                        efficiency = get_efficiency_from_formula(row[f'Model generator Energy Unit {unit + 1} [Wh]'], type)
+
+                if temporal_degradation:
+                    efficiency = temporal_degradation_efficiency(efficiency, temporal_degradation_rate[type], time.date(), installation_dates[unit])
+
+                efficiencies[unit] = efficiency
+                max_powers[unit] = max_power
+                min_powers[unit] = min_power
+                total_energy += row[f'Model generator Energy Unit {unit + 1} [Wh]']
+                total_max_power += max_power
+
+            total_min_power = min(min_powers)
+            total_efficiency = sum(efficiencies[unit] * max_powers[unit] for unit in range(num_units)) / total_max_power
+            generator_data.at[i, 'Power Constraints Total'] = test_power_limits(total_energy, total_max_power, total_min_power)
+            generator_data.at[i, 'Benchmark Fuel Consumption generator Total [l]'] = get_fuel_consumption(total_energy, lhv, total_efficiency)
+            generator_data.at[i, 'Model generator Discounted Energy Total [Wh]'] = total_energy / ((1 + discount_rate) ** ((time - start_date).days / 365))
+
+            if variable_fuel_price:
+                try:
+                    fuel_price = fuel_price_df.loc[fuel_price_df['Year'] == time.year, 'Fuel Price [$/l]'].values[0]
+                except KeyError:
+                    fuel_price = fuel_price_df['Fuel Price [$/l]'].iloc[-1]
+
+            generator_data.at[i, 'Benchmark Discounted Fuel Cost generator Total [$]'] = \
+                (generator_data.at[i, 'Benchmark Fuel Consumption generator Total [l]'] * fuel_price) / \
+                ((1 + discount_rate) ** ((time.year - start_date.year) + 1))
+
+        false_power_constraints = generator_data['Power Constraints Total'].eq(False).sum()
+        logging.info(f'There are {false_power_constraints} (out of {len(generator_data)}) timestamps where the power was not in boundaries.')
+
         if fuel_consumption_scope[0] == "Total":
-            benchmark_fuel_consumption = sum(generator_data['Benchmark Fuel Consumption generator Total [l]'])
+            benchmark_fuel_consumption = generator_data['Benchmark Fuel Consumption generator Total [l]'].sum()
             delta_fuel_consumption = model_fuel_consumption - benchmark_fuel_consumption
-            delta_percentage = (delta_fuel_consumption/benchmark_fuel_consumption) * 100
+            delta_percentage = (delta_fuel_consumption / benchmark_fuel_consumption) * 100
+
             if delta_fuel_consumption > 0:
-                logging.info(f'The model fuel consumption is {delta_fuel_consumption}l higher than the benchmark fuel consumption')
-                logging.info(f'This is {delta_percentage} higher than the benchmark fuel consumption')
-            if delta_fuel_consumption < 0:
-                logging.info(f'The model fuel consumption is {abs(delta_fuel_consumption)}l lower than the benchmark fuel consumption')
-                logging.info(f'This is {abs(delta_percentage)} lower than the benchmark fuel consumption')
-        else:
-            generator_data['Check Fuel Consumption Total'] = (abs(((generator_data['Model Fuel Consumption Total [l]']-generator_data['Benchmark Fuel Consumption generator Total [l]'])/generator_data['Benchmark Fuel Consumption generator Total [l]'])) < 0.01)
-            false_count_fuel_consumption = (generator_data['Check Fuel Consumption Total'] == False).sum()
-            logging.info(f'The fuel consumption does not match the energy output for {false_count_fuel_consumption} (out of {len(generator_data)}) timestamps')
+                logging.info(f'The model fuel consumption is {delta_fuel_consumption}l higher than the benchmark.')
+                logging.info(f'This is {delta_percentage}% higher than the benchmark.')
+            elif delta_fuel_consumption < 0:
+                logging.info(f'The model fuel consumption is {abs(delta_fuel_consumption)}l lower than the benchmark.')
+                logging.info(f'This is {abs(delta_percentage)}% lower than the benchmark.')
 
     results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "generator_validation.csv"
     generator_data.to_csv(results_data_path)

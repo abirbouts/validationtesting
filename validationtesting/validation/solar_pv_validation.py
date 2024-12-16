@@ -104,14 +104,16 @@ def solar_pv_benchmark() -> None:
     
     if irradiation_data['UTC Time'].str.match(r'^\d{2}-\d{2} \d{2}:\d{2}$').any():
         irradiation_data_columns = irradiation_data.columns.tolist()
+        if st.session_state['solar_pv_curtailment']:
+            for unit in range(num_units):
+                irradiation_data_columns.append(f'Model solar_pv Used Energy Unit {unit + 1} [Wh]')
         model_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"model_output_solar_pv.csv"
         solar_model_data = pd.read_csv(model_data_path)
         irradiation_data.rename(columns={'UTC Time': 'UTC Time without year'}, inplace=True)
         solar_model_data['UTC Time without year'] = solar_model_data['UTC Time'].apply(lambda x: datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S').strftime('%m-%d %H:%M'))
         irradiation_data['UTC Time without year'] = irradiation_data['UTC Time without year'].apply(lambda x: datetime.datetime.strptime(x, '%m-%d %H:%M').strftime('%m-%d %H:%M'))
         merged_data = pd.merge(solar_model_data, irradiation_data, on='UTC Time without year', how='left')
-        irradiation_data = merged_data#[irradiation_data_columns]
-
+        irradiation_data = merged_data[irradiation_data_columns]
     if st.session_state.Input_G_total:
         for type in solar_pv_types:
             irradiation_data[f"Benchmark G Total {type} [W/m^2]"] = irradiation_data["G Total [W/m^2]"]
@@ -135,10 +137,16 @@ def solar_pv_benchmark() -> None:
     
     for unit in range(num_units):
         irradiation_data[f"Benchmark solar_pv Energy Unit {unit+1} [Wh]"] = None
-        
+        irradiation_data[f'Benchmark solar_pv Discounted Energy Unit {unit+1} [Wh]'] = None
+        irradiation_data[f'Benchmark Curtailed solar_pv Energy Unit {unit + 1} [Wh]'] = None
+        if st.session_state[f'solar_pv_curtailment'][unit]:
+            irradiation_data[f'Benchmark solar_pv Discounted Used Energy Unit {unit+1} [Wh]'] = 0
+
     irradiation_data[f'Benchmark solar_pv Energy Total [Wh]'] = 0
     irradiation_data[f'Benchmark solar_pv Discounted Energy Total [Wh]'] = 0
-    irradiation_data[i, f'Benchmark Curtailed solar_pv Energy Unit {unit + 1} [Wh]']
+    irradiation_data[f'Benchmark Curtailed solar_pv Energy Total [Wh]'] = 0
+    if st.session_state['solar_pv_curtailment']:
+        irradiation_data[f'Benchmark solar_pv Discounted Used Energy Total [Wh]'] = 0
     
     previous_results = {}
     for i in range(0, len(irradiation_data)):
@@ -164,15 +172,16 @@ def solar_pv_benchmark() -> None:
                 if st.session_state[f'solar_pv_curtailment'][unit]:
                     irradiation_data.loc[i, f'Benchmark Curtailed solar_pv Energy Unit {unit + 1} [Wh]'] = max(0, energy - irradiation_data.loc[i, f'Model solar_pv Used Energy Unit {unit + 1} [Wh]'])
                     irradiation_data.loc[i, f'Benchmark solar_pv Discounted Used Energy Unit {unit+1} [Wh]'] = min(energy, irradiation_data.loc[i, f'Model solar_pv Used Energy Unit {unit + 1} [Wh]']) / ((1 + discount_rate) ** ((date - start_date).days / 365))
-                else:
-                    irradiation_data.loc[i, f'Benchmark solar_pv Discounted Energy Unit {unit+1} [Wh]'] = energy / ((1 + discount_rate) ** ((date - start_date).days / 365))
+                irradiation_data.loc[i, f'Benchmark solar_pv Discounted Energy Unit {unit+1} [Wh]'] = energy / ((1 + discount_rate) ** ((date - start_date).days / 365))
                 previous_results[key] = energy
             irradiation_data.loc[i, f'Benchmark solar_pv Energy Total [Wh]'] += irradiation_data.loc[i, f'Benchmark solar_pv Energy Unit {unit+1} [Wh]']
+            irradiation_data.loc[i, f'Benchmark solar_pv Discounted Energy Total [Wh]'] += irradiation_data.loc[i, f'Benchmark solar_pv Discounted Energy Unit {unit+1} [Wh]']
             if st.session_state[f'solar_pv_curtailment'][unit]:
                 irradiation_data.loc[i, f'Benchmark Curtailed solar_pv Energy Total [Wh]'] += irradiation_data.loc[i, f'Benchmark Curtailed solar_pv Energy Unit {unit + 1} [Wh]']
                 irradiation_data.loc[i, f'Benchmark solar_pv Discounted Used Energy Total [Wh]'] += irradiation_data.loc[i, f'Benchmark solar_pv Discounted Used Energy Unit {unit+1} [Wh]']
-            else:
-                irradiation_data.loc[i, f'Benchmark solar_pv Discounted Energy Total [Wh]'] += irradiation_data.loc[i, f'Benchmark solar_pv Discounted Energy Unit {unit+1} [Wh]']
+    for unit in range(num_units):
+        if st.session_state[f'solar_pv_curtailment'][unit]:
+            irradiation_data.drop(columns=[f'Model solar_pv Used Energy Unit {unit + 1} [Wh]'], inplace=True)
 
 
     results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "solar_pv_validation.csv"

@@ -169,8 +169,13 @@ def plot_model_vs_benchmark(component: str) -> None:
     plt.style.use('fivethirtyeight')
 
     # Calculate hourly statistics for the entire year (Daily Pattern)
-    hourly_stats_model = df.groupby(df.index.hour)[f'Model {component} Energy Total [Wh]'].agg(['mean', 'min', 'max'])
-    hourly_stats_benchmark = df.groupby(df.index.hour)[f'Benchmark {component} Energy Total [Wh]'].agg(['mean', 'min', 'max'])
+    if component == "battery":
+        hourly_stats_model = df.groupby(df.index.hour)['Model battery SoC Total [%]'].agg(['mean', 'min', 'max'])
+        hourly_stats_benchmark = df.groupby(df.index.hour)['Benchmark battery SoC Total [%]'].agg(['mean', 'min', 'max'])
+
+    else:
+        hourly_stats_model = df.groupby(df.index.hour)[f'Model {component} Energy Total [Wh]'].agg(['mean', 'min', 'max'])
+        hourly_stats_benchmark = df.groupby(df.index.hour)[f'Benchmark {component} Energy Total [Wh]'].agg(['mean', 'min', 'max'])
 
     # Plot daily pattern
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -237,6 +242,11 @@ def plot_mae(component: str) -> None:
         # Merge data on the specified scope (e.g., "Hour", "Month", or "Year")
         merged_data = pd.merge(mae_data, benchmark_data, on=scope, how='outer')
 
+        # Sort by month if the scope is "Month"
+        if scope == "Month":
+            merged_data[scope] = pd.Categorical(merged_data[scope], categories=list(calendar.month_name)[1:], ordered=True)
+            merged_data = merged_data.sort_values(by=scope)
+
         # Set plotting style
         plt.style.use('fivethirtyeight')
 
@@ -263,9 +273,116 @@ def plot_mae(component: str) -> None:
         
         # Save the plot
         plot_folder = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "plots"
-        plot_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "plots" / f"{component}_mae_{granularity}.png"
+        plot_path = plot_folder / f"{component}_mae_{granularity}.png"
         plt.savefig(plot_path)
         plt.close()  # Close the plot to free up memory
+
+def energy_balance_plot() -> None:
+    import os
+    import pandas as pd
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from pathlib import Path
+
+    # Load the data
+    project_name = st.session_state.get("project_name")
+    result_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"energy_balance.csv"
+    data = pd.read_csv(result_path)
+
+    # Parse the UTC Time column into datetime and extract the hour
+    data['UTC Time'] = pd.to_datetime(data['UTC Time'])
+    data['Hour'] = data['UTC Time'].dt.hour
+    data.drop(columns=['Total Energy [Wh]'], inplace=True)
+
+    # Extract columns related to energy for renaming and averaging
+    energy_columns = data.columns[1:-1]
+
+    # Define a mapping of column names to categories and rename them
+    rename_map = {
+        col: "Consumption" if "consumption" in col.lower() else
+             "Solar PV" if "solar_pv" in col.lower() else
+             "Wind" if "wind" in col.lower() else
+             "Generator" if "generator" in col.lower() else
+             "Battery" if "battery" in col.lower() else col
+        for col in energy_columns
+    }
+    data.rename(columns=rename_map, inplace=True)
+
+    # Define a color map for the categories
+    color_map = {
+        'Consumption': 'red',
+        'Solar PV': 'yellow',
+        'Wind': 'blue',
+        'Generator': 'grey',
+        'Battery': 'green',
+    }
+
+    # Ensure numeric data (some columns may have extra whitespace or non-numeric entries)
+    for col in rename_map.values():
+        if col in data.columns:
+            data[col] = pd.to_numeric(data[col], errors='coerce')
+
+    # Modify consumption to be negative (from the grid's perspective)
+    if "Consumption" in data.columns:
+        data['Consumption'] *= -1
+
+    # Group by hour and calculate the average for each energy type
+    hourly_avg = data.groupby('Hour')[list(rename_map.values())].mean()
+
+    # Separate positive and negative contributions
+    positive_data = hourly_avg.clip(lower=0)
+    negative_data = hourly_avg.clip(upper=0)
+
+    # Add the total energy for each hour
+    hourly_avg['Total'] = hourly_avg.sum(axis=1)
+
+    # Plotting
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    # Track which components have been added to the legend
+    legend_labels = set()
+
+    # Plot positive contributions (stacked)
+    positive_cumulative = np.zeros(len(hourly_avg))
+    for col in positive_data.columns:
+        if col not in legend_labels:
+            ax.bar(hourly_avg.index, positive_data[col], bottom=positive_cumulative, 
+                   label=col, color=color_map.get(col, 'grey'))
+            legend_labels.add(col)
+        else:
+            ax.bar(hourly_avg.index, positive_data[col], bottom=positive_cumulative, 
+                   color=color_map.get(col, 'grey'))
+        positive_cumulative += positive_data[col]
+
+    # Plot negative contributions (stacked downward)
+    negative_cumulative = np.zeros(len(hourly_avg))
+    for col in negative_data.columns:
+        if col not in legend_labels:
+            ax.bar(hourly_avg.index, negative_data[col], bottom=negative_cumulative, 
+                   label=col, color=color_map.get(col, 'grey'))
+            legend_labels.add(col)
+        else:
+            ax.bar(hourly_avg.index, negative_data[col], bottom=negative_cumulative, 
+                   color=color_map.get(col, 'grey'))
+        negative_cumulative += negative_data[col]
+
+    # Plot the total as a line
+    ax.plot(hourly_avg.index, hourly_avg['Total'], color='black', label='Total (Sum)', linewidth=2)
+
+    # Add labels, legend, and grid
+    ax.set_title("Average Hourly Energy Balance (One Day)", fontsize=14)
+    ax.set_xlabel("Hour of Day", fontsize=12)
+    ax.set_ylabel("Energy (Wh)", fontsize=12)
+    ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
+    ax.grid(True, linestyle="--", alpha=0.7)
+
+    # Save the plot
+    plt.tight_layout()
+    plot_folder = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "plots"
+    os.makedirs(plot_folder, exist_ok=True)
+    plot_path = plot_folder / f"energy_balance.png"
+    plt.savefig(plot_path)
+    plt.close()
 
 def solar_pv_generate_plots() -> None:
     plot_model_vs_benchmark("solar_pv")
@@ -286,6 +403,8 @@ def results() -> None:
 
     # Dropdown for selecting the method of input
     used_components = []
+    if st.session_state.energy_balance:
+        used_components.append("Energy Balance")
     if st.session_state.solar_pv:
         used_components.append("Solar PV")
     if st.session_state.wind:
@@ -329,12 +448,13 @@ def results() -> None:
             charge_power_constraints_metric()
         with col2:
             soc_constraints_metric()
-
-    if results_component == "Solar PV" or results_component == "Wind":
-
+    
+    if results_component in ["Solar PV", "Wind", "Energy Balance"]:
         st.subheader("Plots")
         if st.button("Generate Plots"):
             with st.spinner('Generating Plots...'):
+                if st.session_state.energy_balance:
+                    energy_balance_plot()
                 for component in used_components:
                     if component == "Solar PV":
                         function_name = f"solar_pv_generate_plots"
@@ -344,6 +464,10 @@ def results() -> None:
                     plot_function = getattr(sys.modules[__name__], function_name, None)
                     plot_function()
                 st.session_state.plots_generated = True
+
+        if results_component == "Energy Balance":
+            energy_balance_plot_path = plots_path / "energy_balance.png"
+            st.image(str(energy_balance_plot_path), caption="Average Hourly Energy Balance", use_container_width=True)
 
         if results_component == "Solar PV":
             model_vs_benchmark_path = plots_path / f"solar_pv_model_vs_benchmark.png"

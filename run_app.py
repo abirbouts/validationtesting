@@ -154,6 +154,18 @@ if st.session_state.initialized:
 
                 active_pages["Battery"] = [battery_page, upload_battery_model_output_page]
 
+        if st.session_state.energy_balance:
+            def upload_consumption():
+                upload_model_output('consumption')
+
+            upload_consumption_page = st.Page(
+                page=upload_consumption,
+                title="Upload Consumption Data",
+                icon="📤",
+            )
+
+            active_pages["Consumption"] = [upload_consumption_page]
+
         run_page = st.Page(
             page=run_model,
             title="Run Page",

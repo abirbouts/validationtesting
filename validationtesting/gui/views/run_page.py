@@ -15,6 +15,7 @@ from validationtesting.validation.error_calculation import ERROR
 from validationtesting.validation.battery_validation import battery_validation_testing
 from validationtesting.validation.generator_validation import generator_validation_testing
 from validationtesting.validation.cost_validation import cost_validation
+from validationtesting.validation.energy_balance_validation import energy_balance_validation
 from config.path_manager import PathManager
 
 # Function to set up logging to both a file and StringIO stream
@@ -86,11 +87,11 @@ def run_model() -> None:
             with st.spinner('Calculating benchmarks and checking for boundary exceedances...'):
                 # Create a log file path
                 start_time = datetime.now()
-
+                energy_balance_validation()
                 # Initialize and run the Benchmark class
-                if st.session_state.solar_pv or st.session_state.wind:
-                    Benchmark()
-                    ERROR()
+                #if st.session_state.solar_pv or st.session_state.wind:
+                    #Benchmark()
+                    #ERROR()
                 if st.session_state.battery:
                     battery_validation_testing()
                 if st.session_state.generator:

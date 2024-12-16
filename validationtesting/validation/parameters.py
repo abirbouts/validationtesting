@@ -40,6 +40,7 @@ class ComponentSelection(BaseModel):
     battery: bool
     technical_validation: bool
     economic_validation: bool
+    energy_balance: bool
 
 
 class GeneralInfo(BaseModel):
@@ -268,6 +269,8 @@ class UploadModelOutput(BaseModel):
     generator_model_output_scope: str # "Per Unit", "Total"
     wind_data_uploaded: bool
     wind_model_output_scope: str # "Per Unit", "Total"
+    consumption_data_uploaded: bool
+    consumption_model_output_scope: str
 
 class GeneratePlots(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)

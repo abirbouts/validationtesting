@@ -3,12 +3,13 @@ project_info:
   project_description: "This is a default project."
 
 component_selection:
-  solar_pv: false
-  wind: false
-  generator: false
-  battery: false
-  technical_validation: false
+  solar_pv: true
+  wind: true
+  generator: true
+  battery: true
+  technical_validation: true
   economic_validation: false
+  energy_balance: true
 
 solar_pv_parameters:
     solar_pv_num_units: 1
@@ -156,6 +157,8 @@ upload_model_parameters:
     generator_model_output_scope: "Total"
     wind_data_uploaded: false
     wind_model_output_scope: "Total"
+    consumption_data_uploaded: false
+    consumption_model_output_scope: "Total"
 
 general_info:
   start_date: "2025-01-01 00:00:00"
