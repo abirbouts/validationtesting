@@ -22,7 +22,11 @@ def mae_details(df) -> None:
 
 @st.dialog("All Timestamps, where the power constraints are violated")
 def power_constraints_details(df) -> None:
-    flagged_df = df[(df[[f"Power Constraints Unit {unit+1}" for unit in range(st.session_state.generator_num_units)]] == False).any(axis=1)]
+    if st.session_state.generator_model_output_scope == "Per Unit":
+        flagged_df = df[(df[[f"Power Constraints Unit {unit+1}" for unit in range(st.session_state.generator_num_units)]] == False).any(axis=1)]
+    else:
+        flagged_df = df[df[f"Power Constraints Total"] == False]
+
     st.write(flagged_df)
 
 @st.dialog("Fuel Consumption Details")
@@ -32,12 +36,18 @@ def fuel_consumption_details(fuel_consumption_model, fuel_consumption_benchmark)
 
 @st.dialog("All Timestamps, where the charge power constraints are violated")
 def charge_power_constraints_details(df) -> None:
-    flagged_df = df[(df[[f"Charge Power Constraints Unit {unit+1}" for unit in range(st.session_state.battery_num_units)]] == False).any(axis=1)]
+    if st.session_state.battery_model_output_scope == "Per Unit":
+        flagged_df = df[(df[[f"Charge Power Constraints Unit {unit+1}" for unit in range(st.session_state.battery_num_units)]] == False).any(axis=1)]
+    else:
+        flagged_df = df[df[f"Charge Power Constraints Total"] == False]
     st.write(flagged_df)
 
 @st.dialog("All Timestamps, where the state of charge constraints are violated")
 def soc_constraints_details(df) -> None:
-    flagged_df = df[(df[[f"SoC Constraints Unit {unit+1}" for unit in range(st.session_state.battery_num_units)]] == False).any(axis=1)]
+    if st.session_state.battery_model_output_scope == "Per Unit":
+        flagged_df = df[(df[[f"SoC Constraints Unit {unit+1}" for unit in range(st.session_state.battery_num_units)]] == False).any(axis=1)]
+    else:
+        flagged_df = df[df[f"SoC Constraints Total"] == False]
     st.write(flagged_df)
 
 def add_lcoe_metric(component: str) -> None:
@@ -99,8 +109,11 @@ def power_constraints_metric() -> None:
     data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"generator_validation.csv"
     df = pd.read_csv(data_path)
     count = 0
-    for unit in range(st.session_state.generator_num_units):
-        count += (df[f"Power Constraints Unit {unit+1}"] == False).sum()
+    if st.session_state.generator_model_output_scope == "Per Unit":
+        for unit in range(st.session_state.generator_num_units):
+            count += (df[f"Power Constraints Unit {unit+1}"] == False).sum()
+    else:
+        count = (df["Power Constraints Total"] == False).sum()
     st.metric(label="Power out of boundary:", value=count)
     if st.button(f"View details", key=f"generator_power_constraints_details"):
         power_constraints_details(df)
@@ -115,9 +128,13 @@ def fuel_consumption_metric() -> None:
     df = pd.read_csv(data_path)
     fuel_consumption_model = 0
     fuel_consumption_benchmark = 0
-    for unit in range(st.session_state.generator_num_units):
-        fuel_consumption_model += st.session_state.generator_total_fuel_consumption[unit]
-        fuel_consumption_benchmark += df[f"Benchmark Fuel Consumption Generator Unit {unit+1}"].sum()
+    if st.session_state.generator_model_output_scope == "Per Unit":
+        for unit in range(st.session_state.generator_num_units):
+            fuel_consumption_model += st.session_state.generator_total_fuel_consumption[unit]
+            fuel_consumption_benchmark += df[f"Benchmark Fuel Consumption generator Unit {unit+1} [l]"].sum()
+    else:
+        fuel_consumption_model = st.session_state.generator_total_fuel_consumption[0]
+        fuel_consumption_benchmark = df["Benchmark Fuel Consumption generator Total [l]"].sum()
     percentage_difference = round((abs(fuel_consumption_model - fuel_consumption_benchmark) / fuel_consumption_benchmark)/100, 3)
     st.metric(label="Fuel Consumption Difference:", value=str(percentage_difference) + "%")
     if st.button(f"View details", key=f"generator_fuel_consumption_details"):
@@ -132,8 +149,11 @@ def charge_power_constraints_metric() -> None:
     data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"battery_validation.csv"
     df = pd.read_csv(data_path)
     count = 0
-    for unit in range(st.session_state.generator_num_units):
-        count += (df[f"Charge Power Constraints Unit {unit+1}"] == False).sum()
+    if st.session_state.battery_model_output_scope == "Per Unit":
+        for unit in range(st.session_state.generator_num_units):
+            count += (df[f"Charge Power Constraints Unit {unit+1}"] == False).sum()
+    else:
+        count = (df["Charge Power Constraints Total"] == False).sum()
     st.metric(label="Charge power out of boundary:", value=count)
     if st.button(f"View details", key=f"charge_power_constraints_details"):
         charge_power_constraints_details(df)
@@ -147,8 +167,11 @@ def soc_constraints_metric() -> None:
     data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"battery_validation.csv"
     df = pd.read_csv(data_path)
     count = 0
-    for unit in range(st.session_state.generator_num_units):
-        count += (df[f"SoC Constraints Unit {unit+1}"] == False).sum()
+    if st.session_state.battery_model_output_scope == "Per Unit":
+        for unit in range(st.session_state.generator_num_units):
+            count += (df[f"SoC Constraints Unit {unit+1}"] == False).sum()
+    else:
+        count = (df["SoC Constraints Total"] == False).sum()
     st.metric(label="State of Charge out of boundary:", value=count)
     if st.button(f"View details", key=f"soc_constraints_details"):
         soc_constraints_details(df)

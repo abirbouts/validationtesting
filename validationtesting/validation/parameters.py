@@ -153,6 +153,8 @@ class Battery(BaseModel):
     battery_temporal_degradation_rate: list
     battery_investment_cost: list
     battery_maintenance_cost: list
+    battery_chemistry: list
+    battery_model: list
 
 class SolarIrradiation(BaseModel):
     """

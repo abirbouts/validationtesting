@@ -144,14 +144,49 @@ def enter_specifications(i: int) -> None:
         if st.session_state.battery_temporal_degradation:
             if len(st.session_state.battery_temporal_degradation_rate) != st.session_state.num_battery_types:
                 st.session_state.battery_temporal_degradation_rate = [0.0] * st.session_state.num_battery_types
-                battery_temporal_degradation_rate = [0.0] * st.session_state.num_battery_types
-            battery_temporal_degradation_rate[i] = st.number_input(
+            battery_temporal_degradation_rate = st.number_input(
                 f"Degradation Rate [% per year]:", 
                 min_value=0.0, 
                 value=st.session_state.battery_temporal_degradation_rate[i],
                 key = f"battery_temporal_degradation_rate_{i}"
             )
-            st.session_state.battery_temporal_degradation_rate[i] = battery_temporal_degradation_rate[i]
+            st.session_state.battery_temporal_degradation_rate[i] = battery_temporal_degradation_rate
+
+            if len(st.session_state.battery_temporal_degradation_rate) != st.session_state.num_battery_types:
+                st.session_state.battery_temporal_degradation_rate = [0.0] * st.session_state.num_battery_types
+        if st.session_state.battery_cyclic_degradation:
+            st.session_state.battery_chemistry[i] = st.selectbox(
+                "Battery Chemistry:",
+                ['LFP - Lithium Iron Phosphate (LFP)', 'NCA- Lithium Nickel Cobalt Aluminum Oxide', 'LMO -Lithium Manganese Oxide', 'NMC (Lithium Nickel Manganese Cobalt Oxide)'],
+                index=0
+            )
+            if st.session_state.battery_chemistry[i] == 'LFP - Lithium Iron Phosphate (LFP)':
+                Names = ['Sony-Murata 3 Ah LFP-Gr cylindrical cells', 'Large-format prismatic commercial LFP-Gr']
+                Models = ['Lfp_Gr_SonyMurata3Ah_Battery', 'Lfp_Gr_250AhPrismatic']
+
+            if st.session_state.battery_chemistry[i] == 'NCA- Lithium Nickel Cobalt Aluminum Oxide':
+                Names = ['Panasonic 18650B NCA-Gr (3Ah)', 'Sony-Murata US18650VTC5A 3.5 Ah NCA-GrSi cylindrical cells']
+                Models = ['Nca_Gr_Panasonic3Ah_Battery', 'NCA_GrSi_SonyMurata2p5Ah_Battery']
+
+            if st.session_state.battery_chemistry[i] == 'LMO -Lithium Manganese Oxide':
+                Names = ['Nissan Leaf LMO-Gr Battery  by Braco (66Ah, 2nd Life Cells)']
+                Models = ['Lmo_Gr_NissanLeaf66Ah_2ndLife_Battery']
+
+            if st.session_state.battery_chemistry[i] == 'NMC (Lithium Nickel Manganese Cobalt Oxide)':
+                Names = ['Commercial NMC-LT0', 'Kokam 75 Ah NMC-Gr pouch cell', 'Sanyo UR18650E cells (2Ah)', 'NMC622-Gr EV cells from DENSO',
+                            'LG MJ1 cell (4Ah)', 'Large format pouch NMC-Gr B1 cells', 'Large format pouch NMC-Gr B2 cells', 'Large format pouch NMC-Gr A cells',
+                            'NMC-LTO cells']
+                Models = ['Nmc_Lto_10Ah_Battery', 'Nmc111_Gr_Kokam75Ah_Battery', 'Nmc111_Gr_Sanyo2Ah_Battery', 'Nmc622_Gr_DENSO50Ah_Battery',
+                            ' Nmc811_GrSi_LGMJ1_4Ah_Battery', 'NMC_Gr_50Ah_B1', 'NMC_Gr_50Ah_B2', 'NMC_Gr_75Ah_A',
+                            'Nmc_Lto_10Ah_Battery']
+                
+            battery_model_name = st.selectbox(
+                "Battery Model:",
+                Names,
+                index=Models.index(st.session_state.battery_model[i])
+            )
+            st.session_state.battery_model[i] = Models[Names.index(battery_model_name)]
+
     
     if st.session_state.economic_validation:
         # Battery Investment Cost

@@ -87,11 +87,12 @@ def run_model() -> None:
             with st.spinner('Calculating benchmarks and checking for boundary exceedances...'):
                 # Create a log file path
                 start_time = datetime.now()
-                energy_balance_validation()
+                if st.session_state.energy_balance:
+                    energy_balance_validation()
                 # Initialize and run the Benchmark class
-                #if st.session_state.solar_pv or st.session_state.wind:
-                    #Benchmark()
-                    #ERROR()
+                if st.session_state.solar_pv or st.session_state.wind:
+                    Benchmark()
+                    ERROR()
                 if st.session_state.battery:
                     battery_validation_testing()
                 if st.session_state.generator:

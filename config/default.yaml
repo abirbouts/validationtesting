@@ -87,6 +87,8 @@ battery_parameters:
     battery_temporal_degradation_rate: [2.0]
     battery_investment_cost: [0.0]
     battery_maintenance_cost: [0.0]
+    battery_chemistry: ['LFP - Lithium Iron Phosphate (LFP)']
+    battery_model: ['Lfp_Gr_250AhPrismatic']
 
 wind_parameters:
     wind_num_units: 1
