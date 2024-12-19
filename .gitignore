@@ -1,0 +1,4 @@
+.venv/
+dummy_data/
+projects/*
+*.pyc
