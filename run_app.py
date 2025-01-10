@@ -1,12 +1,12 @@
-import streamlit as st
-from pathlib import Path
-from config.path_manager import PathManager
+"""
+This script sets up a Streamlit application for validation testing of various energy components.
+It defines the pages for the application, and manages the navigation
+between these pages based on the user's selections and the state of the session.
+"""
 
-import yaml
-import datetime
-from config.path_manager import PathManager
+import streamlit as st
+
 from validationtesting.gui.views.utils import render_footer
-from validationtesting.gui.views.utils import render_top_left_icons
 from validationtesting.gui.views.initial_page import initial_page
 from validationtesting.gui.views.general_page import general
 from validationtesting.gui.views.component_selection_page import component_selection
@@ -19,7 +19,6 @@ from validationtesting.gui.views.wind_data_page import wind_data
 from validationtesting.gui.views.generator_page import generator
 from validationtesting.gui.views.run_page import run_model
 from validationtesting.gui.views.results_page import results
-from validationtesting.gui.views.utils import initialize_session_state
 from validationtesting.utils.savetoyaml import save_to_yaml
 
 

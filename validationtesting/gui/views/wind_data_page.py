@@ -1,99 +1,17 @@
+"""
+This module contains the wind data upload page for the GUI. 
+It allows the user to upload their own wind data or download it from PVGIS.
+"""
+
 import streamlit as st
 import pandas as pd
 from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface, time_format_timezone_selectors
+from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface, time_format_timezone_selectors, load_csv_data, load_timeseries_csv_with_timezone
 import datetime as dt
-import pytz
 import requests
 
-
-def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str) -> pd.DataFrame:
-    """
-    Load CSV data with given delimiter and decimal options.
-    
-    Args:
-        uploaded_file: The uploaded CSV file.
-        delimiter (str): The delimiter used in the CSV file.
-        decimal (str): The decimal separator used in the CSV file.
-        resource_name (Optional[str]): The name of the resource (used for column naming).
-    
-    Returns:
-        Optional[pd.DataFrame]: The loaded DataFrame or None if an error occurred.
-    """
-    try:
-        uploaded_file.seek(0)
-        data = pd.read_csv(uploaded_file, delimiter=delimiter, decimal=decimal)
-        data = data.apply(pd.to_numeric, errors='coerce')
-        
-        if len(data.columns) > 1:
-            selected_column = st.selectbox(f"Select the column representing {parameter}", data.columns)
-            data = data[[selected_column]]
-        
-        data.index = range(1, len(data) + 1)
-        data.index.name = 'Periods'
-        
-        if data.empty:
-            st.warning("No data found in the CSV file. Please check delimiter and decimal settings.")
-        elif data.isnull().values.any():
-            st.warning("Some values could not be converted to numeric. Please check the data.")
-        else:
-            st.success(f"Data loaded successfully using delimiter '{delimiter}' and decimal '{decimal}'")
-        
-        return data
-    except Exception as e:
-        st.error(f"Error during import of CSV data: {e}")
-        return None
-    
-# Function to load and process time series data with time zones and format handling
-def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: str, time_format: str, timezone: str) -> pd.DataFrame:
-    """
-    Load CSV time-series data with given delimiter, decimal options, and convert the time column to UTC datetime.
-    
-    Args:
-        uploaded_file: The uploaded CSV file.
-        delimiter (str): The delimiter used in the CSV file.
-        decimal (str): The decimal separator used in the CSV file.
-        time_format (str): The format of the time column to parse datetime (e.g., '%Y-%m-%d %H:%M:%S').
-        timezone (str): The time zone of the data (e.g., 'Europe/Berlin').
-        parameter (str): The name of the data parameter (e.g., temperature or irradiation).
-    
-    Returns:
-        Optional[pd.DataFrame]: The loaded DataFrame with time in UTC or None if an error occurred.
-    """
-    try:
-        uploaded_file.seek(0)
-        data = pd.read_csv(uploaded_file, delimiter=delimiter, decimal=decimal)
-        
-        if data.empty:
-            st.warning("No data found in the CSV file. Please check the file.")
-            return None
-        
-        # Select the time column
-        time_column = st.selectbox(f"Select the column representing time:", data.columns)
-        
-        # Convert the time column to datetime using the provided format and time zone
-        try:
-            data[time_column] = pd.to_datetime(data[time_column], format=time_format, errors='coerce')
-        except ValueError as e:
-            st.error(f"Error in parsing time column: {e}")
-            return None
-
-        # Localize to the selected timezone and convert to UTC
-        local_tz = pytz.timezone(timezone)
-        time = data[time_column].apply(lambda x: local_tz.localize(x).astimezone(pytz.UTC))
-
-        if time.empty:
-            st.warning("No valid time series data found. Please check the CSV file.")
-        else:
-            st.success(f"Time loaded successfully for Time and converted to UTC.")
-
-        return time
-    
-    except Exception as e:
-        st.error(f"Error during import of time from CSV: {e}")
-        return None
-
 def download_pvgis_wind_data(lat, lon) -> pd.DataFrame:
+    """Download wind data from PVGIS API."""
     URL = 'https://re.jrc.ec.europa.eu/api/tmy?lat=' + str(lat) + '&lon=' + str(lon) + '&outputformat=json'
 
     # Make the request

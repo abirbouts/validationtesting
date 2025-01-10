@@ -1,3 +1,10 @@
+"""
+This module is used to calculate the benchmark wind energy output of a wind turbine. 
+It uses the wind speed data and the power curve of the wind turbine to calculate the energy output. 
+The energy output is calculated for each unit of the wind turbine and for each time step in the wind speed data. 
+The energy output is then saved to a CSV file.
+"""
+
 import streamlit as st
 import pandas as pd
 import logging
@@ -7,6 +14,9 @@ import math
 import numpy as np
 
 def temporal_degradation_efficiency(efficiency: float, degradation_rate: float, date: datetime.date, installation_date: datetime.date) -> float:
+    """
+    Calculate the efficiency of a component based on the degradation rate and the time since installation.
+    """
     def get_years_since_install(installation_date: datetime.date, current_date: datetime.date) -> float:
         # Ensure both are 'date' objects
         installation_date = installation_date.date()
@@ -23,16 +33,6 @@ def temporal_degradation_efficiency(efficiency: float, degradation_rate: float, 
 def shear_exp(w_Z1: float, w_Z0: float, Z_1: float, Z_0: float, Z_rot: float, alpha: float) -> float:
     """
     Calculate the rotor wind speed using the shear exponent method.
-
-    Parameters:
-    w_Z1 (float): Wind speed at height Z_1.
-    w_Z0 (float): Wind speed at height Z_0.
-    Z_1 (float): Height Z_1.
-    Z_0 (float): Height Z_0.
-    Z_rot (float): Rotor height.
-
-    Returns:
-    float: Calculated rotor wind speed. If either w_Z1 or w_Z0 is zero, returns 0.
     """
     if alpha is None:
         if w_Z1 == 0 or w_Z0 == 0:
@@ -45,6 +45,9 @@ def shear_exp(w_Z1: float, w_Z0: float, Z_1: float, Z_0: float, Z_rot: float, al
     return U_rotor
 
 def get_wind_energy_two_heights(w_Z1: float, w_Z0: float, Z_1: float, Z_0: float, Z_rot: float, power_curve: pd.DataFrame, drivetrain_efficiency: float) -> float:
+    """
+    Get the wind energy output of a wind turbine using the wind speed at two heights.
+    """
     U_rotor = shear_exp(w_Z1, w_Z0, Z_1, Z_0, Z_rot, alpha=None)
     wind_speeds_power_curve = power_curve['Wind Speed [m/s]'].values
     power_power_curve = power_curve['Power [W]'].values
@@ -53,6 +56,9 @@ def get_wind_energy_two_heights(w_Z1: float, w_Z0: float, Z_1: float, Z_0: float
     return wind_energy
 
 def get_wind_energy_one_height(w_Z1: float, Z_1: float, Z_rot: float, power_curve: pd.DataFrame, drivetrain_efficiency: float, surface_roughness: float) -> float:
+    """
+    Get the wind energy output of a wind turbine using the wind speed at one height.
+    """
     alpha = 0.096 * math.log10(surface_roughness) + 0.16 * (math.log10(surface_roughness))**2 + 0.24
     U_rotor = shear_exp(w_Z1, None, Z_1, None, Z_rot, alpha)
     wind_speeds_power_curve = power_curve['Wind Speed [m/s]']
@@ -62,6 +68,9 @@ def get_wind_energy_one_height(w_Z1: float, Z_1: float, Z_rot: float, power_curv
     return wind_energy
 
 def wind_benchmark() -> None:
+    """
+    Calculate the benchmark wind energy output of a wind turbine.
+    """
     logging.info('Running wind validation testing')
     project_name = st.session_state.get("project_name")
     wind_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"wind_data.csv"

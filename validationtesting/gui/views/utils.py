@@ -1,11 +1,15 @@
 """
 This module provides utility functions for rendering the footer in the MicroGridsPy Streamlit application.
 It includes functions to convert images to base64 strings and to render a footer with links to documentation, GitHub, and contact email.
+It also includes functions to initialize session state variables, create an interface for CSV file upload, and select time formats and time zones.
 """
+
 import base64
 import streamlit as st
 import pytz
 import re
+import datetime as dt
+import pandas as pd
 
 from typing import Tuple, Any
 from io import BytesIO
@@ -138,6 +142,9 @@ def csv_upload_interface(key_prefix: str) -> Tuple[st.file_uploader, str, str]:
     return uploaded_file, delimiter_value, decimal_value
 
 def time_format_timezone_selectors() -> tuple:
+    """
+    Create selectors for time format and time zone.
+    """
     # List of all available time zones with country names
     timezones_with_countries = ["Universal Time Coordinated - UTC"]
     # Add all GMT time zones
@@ -192,6 +199,9 @@ def time_format_timezone_selectors() -> tuple:
     return time_format, selected_timezone
 
 def timezone_selector() -> tuple:
+    """
+    Create a selector for time zone.
+    """
     # List of all available time zones with country names
     timezones_with_countries = ["Universal Time Coordinated - UTC"]
     # Add all GMT time zones
@@ -218,3 +228,114 @@ def timezone_selector() -> tuple:
         selected_timezone = selected_timezone_with_country.split(' - ')[1]
 
     return selected_timezone
+
+def convert_dates_to_utc(dates: list[dt.datetime], timezone_str: str) -> list[dt.datetime]:
+    """
+    Convert a list of dates to UTC using the provided timezone.
+    """
+    # Load the timezone
+    local_tz = pytz.timezone(timezone_str)
+
+    # Convert each date to UTC
+    dates_utc = []
+    for date in dates:
+        if isinstance(date, dt.datetime):
+            # Localize the date to the selected timezone and convert to UTC
+            localized_date = local_tz.localize(date)
+            utc_date = localized_date.astimezone(pytz.UTC).replace(tzinfo=None)
+            dates_utc.append(utc_date)
+        else:
+            dates_utc.append(None)  # Handle cases where date is not provided
+
+    return dates_utc
+
+def combine_date_and_time(date_value: dt.date, time_value: dt.time) -> dt.datetime:
+    """Combine date and time into a datetime object."""
+    return dt.datetime.combine(date_value, time_value)
+
+def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str) -> pd.DataFrame:
+    """
+    Load CSV data with given delimiter and decimal options.
+    
+    Args:
+        uploaded_file: The uploaded CSV file.
+        delimiter (str): The delimiter used in the CSV file.
+        decimal (str): The decimal separator used in the CSV file.
+        resource_name (Optional[str]): The name of the resource (used for column naming).
+    
+    Returns:
+        Optional[pd.DataFrame]: The loaded DataFrame or None if an error occurred.
+    """
+    try:
+        uploaded_file.seek(0)
+        data = pd.read_csv(uploaded_file, delimiter=delimiter, decimal=decimal)
+        data = data.apply(pd.to_numeric, errors='coerce')
+        
+        if len(data.columns) > 1:
+            selected_column = st.selectbox(f"Select the column representing {parameter}", data.columns)
+            data = data[[selected_column]]
+        
+        data.index = range(1, len(data) + 1)
+        data.index.name = 'Periods'
+        
+        if data.empty:
+            st.warning("No data found in the CSV file. Please check delimiter and decimal settings.")
+        elif data.isnull().values.any():
+            st.warning("Some values could not be converted to numeric. Please check the data.")
+        else:
+            st.success(f"Data loaded successfully using delimiter '{delimiter}' and decimal '{decimal}'")
+        
+        return data
+    except Exception as e:
+        st.error(f"Error during import of CSV data: {e}")
+        return None
+    
+
+# Function to load and process time series data with time zones and format handling
+def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: str, time_format: str, timezone: str) -> pd.DataFrame:
+    """
+    Load CSV time-series data with given delimiter, decimal options, and convert the time column to UTC datetime.
+    
+    Args:
+        uploaded_file: The uploaded CSV file.
+        delimiter (str): The delimiter used in the CSV file.
+        decimal (str): The decimal separator used in the CSV file.
+        time_format (str): The format of the time column to parse datetime (e.g., '%Y-%m-%d %H:%M:%S').
+        timezone (str): The time zone of the data (e.g., 'Europe/Berlin').
+        parameter (str): The name of the data parameter (e.g., temperature or irradiation).
+    
+    Returns:
+        Optional[pd.DataFrame]: The loaded DataFrame with time in UTC or None if an error occurred.
+    """
+    try:
+        uploaded_file.seek(0)
+        data = pd.read_csv(uploaded_file, delimiter=delimiter, decimal=decimal)
+        
+        if data.empty:
+            st.warning("No data found in the CSV file. Please check the file.")
+            return None
+        
+        # Select the time column
+        time_column = st.selectbox(f"Select the column representing time:", data.columns)
+        
+        # Convert the time column to datetime using the provided format and time zone
+        try:
+            data[time_column] = pd.to_datetime(data[time_column], format=time_format, errors='coerce')
+        except ValueError as e:
+            st.error(f"Error in parsing time column: {e}")
+            return None
+
+        # Localize to the selected timezone and convert to UTC
+        local_tz = pytz.timezone(timezone)
+        time = data[time_column].apply(lambda x: local_tz.localize(x).astimezone(pytz.UTC))
+
+        if time.empty:
+            st.warning("No valid time series data found. Please check the CSV file.")
+        else:
+            st.success(f"Time loaded successfully for Time and converted to UTC.")
+
+        return time
+    
+    except Exception as e:
+        st.error(f"Error during import of time from CSV: {e}")
+        return None

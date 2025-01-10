@@ -1,6 +1,9 @@
+"""
+This module is used to calculate the discounted cost of a project.
+"""
+
 import streamlit as st
 from datetime import datetime
-from dateutil import tz
 import pandas as pd
 from config.path_manager import PathManager
 
@@ -28,7 +31,7 @@ def get_discounted_cost(start_date, end_date, installation_date, investment_cost
     return discounted_investment_cost, discounted_operation_cost, discounted_salvage_value
 
 def cost_validation() -> None:
-
+    """Calculate the discounted cost of the project and save the results in a CSV file"""
     start_date = st.session_state.start_date
     end_date = st.session_state.end_date
     discount_rate = st.session_state.discount_rate / 100

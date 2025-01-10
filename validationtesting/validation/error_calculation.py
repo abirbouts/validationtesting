@@ -1,14 +1,19 @@
+"""
+This module calculates the Mean Absolute Error (MAE) and Root Mean Squared Error (RMSE) for the model output and benchmark data.
+The errors are calculated for each unit of the component and for the total energy output.
+The errors are calculated on a yearly, monthly and hourly basis.
+The errors are saved to CSV files.
+"""
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state
-import datetime as dt
 import logging
 
 class ERROR():
     def __init__(self) -> None:
-
+        """Initialize the Error class, run functions to calculate the errors and save the errors in CSV files."""
         self.logger = logging.getLogger('MAPE')
         self.logger.info("Starting Error calculation...")
         self.project_name = st.session_state.get("project_name")
@@ -161,6 +166,7 @@ class ERROR():
             df.to_csv(results_data_path, index=False)
     
     def mae(self, df: pd.DataFrame) -> tuple[dict[str, float], dict[str, float], dict[str, float], dict[str, float]]:
+        """Calculate the Mean Absolute Error (MAE) for the model output and benchmark data."""
         # Total MAE
         total_mae = {"Total MAE": np.mean(np.abs(df['model_output'] - df['benchmark_output']))}
 
@@ -179,6 +185,7 @@ class ERROR():
         return total_mae, yearly_mae, monthly_mae, hourly_mae
 
     def rmse(self, df: pd.DataFrame) -> tuple[dict[str, float], dict[str, float], dict[str, float], dict[str, float]]:
+        """Calculate the Root Mean Squared Error (RMSE) for the model output and benchmark data."""
         # Total RMSE
         total_rmse = {"Total RMSE": np.sqrt(np.mean((df['model_output'] - df['benchmark_output']) ** 2))}
 

@@ -1,14 +1,9 @@
 """
 This module defines a set of classes for configuring and managing parameters.
-It includes models for project  information, settings, advanced configurations, 
-resource assessments, archetype parameters, and renewable energy sources. 
-These models are built using Pydantic  for data validation and can be instantiated 
-from YAML file or saved to it for ease of configuration management.
+It can be instantiated from and saved to a YAML file for ease of configuration management.
 """
 
 from datetime import datetime
-from typing import List, Optional
-import pandas as pd
 
 import yaml
 from pydantic import BaseModel, ConfigDict
@@ -16,7 +11,7 @@ from pydantic import BaseModel, ConfigDict
 
 class ProjectInfo(BaseModel):
     """
-    Model representing project information.
+    Parameters used for project information.
 
     Attributes:
         project_name (str): The name of the project.
@@ -27,11 +22,16 @@ class ProjectInfo(BaseModel):
 
 class ComponentSelection(BaseModel):
     """
-    Model representing project information.
+    Parameters used for component selection.
 
     Attributes:
-        project_name (str): The name of the project.
-        project_description (str): A brief description of the project.
+        solar_pv (bool): Whether to include solar PV in the project.
+        wind (bool): Whether to include wind in the project.
+        generator (bool): Whether to include a generator in the project.
+        battery (bool): Whether to include a battery in the project.
+        technical_validation (bool): Whether to perform technical validation.
+        economic_validation (bool): Whether to perform economic validation.
+        energy_balance (bool): Whether to perform energy balance validation.
     """
     # Parameters
     solar_pv: bool
@@ -45,11 +45,14 @@ class ComponentSelection(BaseModel):
 
 class GeneralInfo(BaseModel):
     """
-    Model representing project information.
+    Parameters used for general info.
 
     Attributes:
-        project_name (str): The name of the project.
-        project_description (str): A brief description of the project.
+        start_date (datetime): The start date of the project.
+        end_date (datetime): The end date of the project.
+        discount_rate (float): The discount rate for the project.
+        lat (float): The latitude of the project.
+        lon (float): The longitude of the project.
     """
     # Parameters
     start_date: datetime
@@ -61,11 +64,39 @@ class GeneralInfo(BaseModel):
 
 class SolarPV(BaseModel):
     """
-    Model representing project information.
+    Parameters used solar pv configuration.
 
     Attributes:
-        project_name (str): The name of the project.
-        project_description (str): A brief description of the project.
+        solar_pv_num_units (int): Number of solar PV units.
+        same_date (bool): Whether all units share the same installation date.
+        selected_timezone_solar_pv (str): Selected timezone for solar PV installation dates.
+        installation_dates (list): Installation dates for each unit.
+        installation_dates_utc (list): Installation dates in UTC.
+        num_solar_pv_types (int): Number of solar PV types.
+        same_type (bool): Whether all units share the same type.
+        solar_pv_types (list): List of solar PV types.
+        solar_pv_type (list): Type of solar PV for each unit.
+        pv_rho (float): The reflectance coefficient for solar PV.
+        pv_lifetime (list): Lifetime for each solar PV type.
+        solar_pv_calculation_type (list): Energy calculation type for each solar PV type.
+        pv_area (list): Area for each solar PV type.
+        pv_efficiency (list): Efficiency for each solar PV type.
+        pv_nominal_power (list): Nominal power for each solar PV type.
+        pv_theta_tilt (list): Tilt angle for each solar PV type.
+        pv_azimuth (list): Azimuth angle for each solar PV type.
+        pv_degradation (bool): Whether to include degradation for solar PV.
+        pv_degradation_rate (list): Degradation rate for each solar PV type.
+        pv_temperature_dependent_efficiency (bool): Whether temperature-dependent efficiency is included.
+        pv_temperature_coefficient (list): Temperature coefficient for each solar PV type.
+        pv_T_ref (list): Reference temperature for each solar PV type.
+        pv_T_ref_NOCT (list): Reference temperature for NOCT for each solar PV type.
+        pv_NOCT (list): NOCT for each solar PV type.
+        pv_I_ref_NOCT (list): Reference irradiance for NOCT for each solar PV type.
+        pv_dynamic_inverter_efficiency (bool): Whether dynamic inverter efficiency is included.
+        pv_inverter_efficiency (list): Inverter efficiency for each solar PV type.
+        solar_pv_investment_cost (list): Investment cost for each solar PV type.
+        solar_pv_maintenance_cost (list): Maintenance cost for each solar PV type.
+        solar_pv_curtailment (list): Wheter curtailment is included for each solar PV type.
     """
     # Parameters
     solar_pv_num_units: int
@@ -101,29 +132,38 @@ class SolarPV(BaseModel):
 
 class Battery(BaseModel):
     """
-    Model representing battery parameters.
+    Parameters used for battery configuration.
 
     Attributes:
         battery_num_units (int): Number of battery units.
-        battery_installation_dates (list): Installation dates for each unit.
-        battery_installation_dates_utc (list): Installation dates in UTC.
+        battery_installation_dates (list): Installation dates for each battery unit.
+        battery_installation_dates_utc (list): Installation dates for each unit in UTC.
         battery_same_date (bool): Whether all units share the same installation date.
         selected_timezone_battery (str): Selected timezone for battery installation dates.
+        battery_same_type (bool): Whether all units share the same type.
         battery_types (list): List of battery types.
         battery_type (list): Type of battery for each unit.
-        battery_temporal_degradation (bool): Indicates temporal degradation for batteries.
-        battery_cyclic_degradation (bool): Indicates cyclic degradation for batteries.
-        battery_dynamic_inverter_efficiency (bool): Dynamic inverter efficiency toggle.
+        battery_temporal_degradation (bool): Wether temporal degradation is included.
+        battery_cyclic_degradation (bool): Whether cyclic degradation is included.
+        battery_dynamic_inverter_efficiency (bool): Whether dynamic inverter efficiency is included.
         battery_capacity (list): Capacity for each battery type.
         battery_lifetime (list): Lifetime for each battery type.
         battery_charging_efficiency (list): Charging efficiency for each battery type.
         battery_discharging_efficiency (list): Discharging efficiency for each battery type.
+        battery_roundtrip_efficiency (list): Roundtrip efficiency for each battery type.
         battery_initial_soc (list): Initial state of charge for each battery type.
         battery_min_soc (list): Minimum state of charge for each battery type.
         battery_max_soc (list): Maximum state of charge for each battery type.
-        battery_min_charge_power (list): Minimum charging power for each battery type.
-        battery_max_charge_power (list): Maximum charging power for each battery type.
+        battery_max_charge_power (list): Maximum charge power for each battery type.
+        battery_max_discharge_power (list): Maximum discharge power for each battery type.
         battery_inverter_efficiency (list): Inverter efficiency for each battery type.
+        battery_efficiency_type (str): Efficiency type for the battery.
+        battery_inverter_eff_included (list): Whether inverter efficiency is included for each battery type.
+        battery_temporal_degradation_rate (list): Temporal degradation rate for each battery type.
+        battery_investment_cost (list): Investment cost for each battery type.
+        battery_maintenance_cost (list): Maintenance cost for each battery type.
+        battery_chemistry (list): Chemistry for each battery type.
+        battery_model (list): Model used for cyclic degradation calculation for each battery type.
     """
     # Parameters
     battery_num_units: int
@@ -158,11 +198,23 @@ class Battery(BaseModel):
 
 class SolarIrradiation(BaseModel):
     """
-    Model representing project information.
+    Parameters used for solar irradiation configuration.
 
     Attributes:
-        project_name (str): The name of the project.
-        project_description (str): A brief description of the project.
+        solar_irradiation_selected_input_type (str): The selected input type for solar irradiation.
+        solar_irradiation_delimiter (str): The delimiter for solar irradiation data.
+        solar_irradiation_decimal (str): The decimal separator for solar irradiation data.
+        solar_irradiation_time_format (str): The time format for solar irradiation data.
+        solar_irradiation_timezone (str): The timezone for solar irradiation data.
+        irradiation_data_uploaded (bool): Whether irradiation data has been uploaded.
+        Input_GHI (bool): Whether Global Horizontal Irradiance (GHI) data is included.
+        Input_DHI (bool): Whether Diffuse Horizontal Irradiance (DHI) data is included.
+        Input_DNI (bool): Whether Direct Normal Irradiance (DNI) data is included.
+        Input_G_total (bool): Whether total irradiance data is included.
+        solar_irradiation_data_source (str): The data source for solar irradiation data.
+        albedo (bool): Whether albedo is included.
+        albedo_coefficient (float): The albedo coefficient.
+        selected_timezone_solar_irradiation (str): The selected timezone for solar irradiation.
     """
     # Parameters
     solar_irradiation_selected_input_type: str
@@ -181,6 +233,38 @@ class SolarIrradiation(BaseModel):
     selected_timezone_solar_irradiation: str
 
 class Wind(BaseModel):
+    """
+    Parameters used for wind configuration.
+
+    Attributes:
+    wind_num_units (int): Number of wind units.
+    wind_installation_dates (list): Installation dates for each wind unit.
+    wind_installation_dates_utc (list): Installation dates for each unit in UTC.
+    wind_same_date (bool): Whether all units share the same installation date.
+    selected_timezone_wind (str): Selected timezone for wind installation dates.
+    wind_types (list): List of wind types.
+    wind_type (list): Type of wind for each unit.
+    wind_same_type (bool): Whether all units share the same type.
+    wind_turbine_type (list): Turbine type for each wind unit.
+    wind_lifetime (list): Lifetime for each wind unit.
+    wind_rated_power (list): Rated power for each wind unit.
+    wind_drivetrain_efficiency (list): Drivetrain efficiency for each wind unit.
+    wind_inverter_efficiency (list): Inverter efficiency for each wind unit.
+    wind_diameter (list): Diameter for each wind unit.
+    wind_hub_height (list): Hub height for each wind unit.
+    wind_power_curve_uploaded (list): Whether power curve data has been uploaded for each wind unit.
+    wind_temporal_degradation (bool): Whether temporal degradation is included for wind.
+    wind_temporal_degradation_rate (list): Temporal degradation rate for each wind unit.
+    wind_speed_data_uploaded (bool): Whether wind speed data has been uploaded.
+    wind_selected_input_type (str): The selected input type for wind speed data.
+    wind_Z1 (float): The height of the first wind speed measurement.
+    wind_Z0 (float): The height of the second wind speed measurement.
+    wind_surface_type (str): The surface type for wind speed data.
+    wind_surface_roughness (float): The surface roughness for wind speed data.
+    wind_investment_cost (list): Investment cost for each wind unit.
+    wind_maintenance_cost (list): Maintenance cost for each wind unit.
+    wind_curtailment (list): Whether curtailment is included for each wind unit.
+    """
     wind_num_units: int
     wind_installation_dates: list
     wind_installation_dates_utc: list
@@ -211,25 +295,36 @@ class Wind(BaseModel):
 
 class Generator(BaseModel):
     """
-    Model representing generator parameters.
+    Parameters used for generator configuration.
 
     Attributes:
-        generator_num_units (int): Number of generator units.
-        generator_installation_dates (list): Installation dates for each generator unit.
-        generator_installation_dates_utc (list): Installation dates for each unit in UTC.
-        generator_same_date (bool): Whether all units share the same installation date.
-        selected_timezone_generator (str): Selected timezone for generator installation dates.
-        generator_types (list): List of generator types.
-        generator_type (list): Type of generator for each unit.
-        generator_same_type (bool): Whether all units share the same type.
-        generator_dynamic_efficiency (bool): Indicates dynamic efficiency for generators.
-        generator_temporal_degradation (bool): Indicates temporal degradation for generators.
-        generator_cyclic_degradation (bool): Indicates cyclic degradation for generators.
-        generator_efficiency (list): Efficiency for each generator type.
-        generator_lifetime (list): Lifetime for each generator type.
-        generator_min_power (list): Minimum power output for each generator type.
-        generator_max_power (list): Maximum power output for each generator type.
-        generator_fuel_energy (list): Fuel lower heating value (LHV) for each generator type.
+    generator_num_units (int): Number of generator units.
+    generator_installation_dates (list): Installation dates for each generator unit.
+    generator_installation_dates_utc (list): Installation dates for each unit in UTC.
+    generator_same_date (bool): Whether all units share the same installation date.
+    selected_timezone_generator (str): Selected timezone for generator installation dates.
+    generator_types (list): List of generator types.
+    generator_type (list): Type of generator for each unit.
+    generator_same_type (bool): Whether all units share the same type.
+    generator_dynamic_efficiency (bool): Whether dynamic efficiency is included for generator.
+    generator_temporal_degradation (bool): Whether temporal degradation is included for generator.
+    generator_cyclic_degradation (bool): Whether cyclic degradation is included for generator.
+    generator_efficiency (list): Efficiency for each generator unit.
+    generator_lifetime (list): Lifetime for each generator unit.
+    generator_min_power (list): Minimum power for each generator unit.
+    generator_max_power (list): Maximum power for each generator unit.
+    generator_fuel_lhv (list): Lower heating value for each generator unit.
+    generator_temporal_degradation_rate (list): Temporal degradation rate for each generator unit.
+    generator_dynamic_efficiency_type (list): Dynamic efficiency type for each generator unit.
+    generator_dynamic_efficiency_uploaded (list): Whether dynamic efficiency data has been uploaded for each generator unit.
+    generator_efficiency_formula (list): Efficiency formula for each generator unit.
+    generator_fuel_consumption_scope (list): Fuel consumption scope for each generator unit.
+    generator_total_fuel_consumption (list): Total fuel consumption for each generator unit.
+    generator_investment_cost (list): Investment cost for each generator unit.
+    generator_maintenance_cost (list): Maintenance cost for each generator unit.
+    generator_fuel_price (float): Fuel price for the generator.
+    generator_variable_fuel_price (bool): Whether the fuel price is variable.
+    generator_variable_fuel_price_uploaded (bool): Whether the fuel price data has been uploaded.
     """
     generator_num_units: int
     generator_installation_dates: list
@@ -260,6 +355,9 @@ class Generator(BaseModel):
     generator_variable_fuel_price_uploaded: bool
 
 class UploadModelOutput(BaseModel):
+    """
+    Parameters used for model output upload configuration.
+    """
     model_config = ConfigDict(arbitrary_types_allowed=True)
     solar_pv_data_uploaded: bool
     solar_pv_model_output_scope: str # "Per Unit", "Total"
@@ -275,22 +373,15 @@ class UploadModelOutput(BaseModel):
     consumption_model_output_scope: str
 
 class GeneratePlots(BaseModel):
+    """
+    Parameters used for generating plots.
+    """
     model_config = ConfigDict(arbitrary_types_allowed=True)
     plots_generated: bool 
 
 class ProjectParameters(BaseModel):
     """
-    Model representing the default values for the project.
-
-    Attributes:
-        project_info (ProjectInfo): The project information.
-        project_settings (ProjectSettings): The project settings.
-        advanced_settings (AdvancedSettings): The advanced settings.
-        nasa_power_params (NasaPowerParams): The NASA POWER API parameters.
-        resource_assessment (ResourceAssessment): The resource assessment parameters.
-        archetypes_params (ArchetypesParams): The archetype parameters.
-        renewables_params (RenewablesParams): The renewable energy source parameters.
-        grid_params (GridParams): The grid connection parameters.
+    Aggregate class for all project parameters.
     """    
     # Parameters
     project_info: ProjectInfo

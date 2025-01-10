@@ -1,14 +1,25 @@
+"""
+This module is used to calculate the benchmark solar PV energy output of a solar PV system.
+It uses the solar irradiance data and the specifications of the solar PV system to calculate the energy output.
+The energy output is calculated for each unit of the solar PV system and for each time step in the solar irradiance data.
+The energy output is then saved to a CSV file.
+"""
+
 import streamlit as st
 import pandas as pd
-from math import radians as rad, sin, cos, acos, degrees
 import datetime
 import logging
 from config.path_manager import PathManager
 import validationtesting.validation.get_solar_irradiance as get_solar_irradiance 
 
-
 def get_solar_pv_energy(pv_calculation_type: str, nominal_power: float, PV_area: float, G_total: float, T_ambient: float, efficiency: float, dynamic_efficiency: bool, temperature_coefficient: float, T_ref: float, NOCT: float, T_ref_NOCT: float, ref_irradiance_NOCT: float, degradation: bool, degradation_rate: float, date: datetime.datetime, installation_date: datetime.datetime, lifetime: int) -> float:
+    """
+    Calculate the solar PV energy output for a given solar PV system.
+    """
     def get_years_since_install(installation_date: datetime.date, current_date: datetime.date) -> float:
+        """
+        Calculate the number of years since the installation date.
+        """
         # Ensure both are 'date' objects
         installation_date = installation_date.date()
         current_date = current_date.date()
@@ -53,6 +64,9 @@ def get_solar_pv_energy(pv_calculation_type: str, nominal_power: float, PV_area:
     return P_solar
 
 def add_inverter_efficiency(P_solar: float, inverter_efficiency: dict) -> tuple:
+    """
+    Add the inverter efficiency to the solar PV energy output.
+    """
     for start, end, efficiency in zip(inverter_efficiency["Power_Start_W"], 
                                     inverter_efficiency["Power_End_W"], 
                                     inverter_efficiency["Inverter_Efficiency_%"]):
@@ -63,6 +77,9 @@ def add_inverter_efficiency(P_solar: float, inverter_efficiency: dict) -> tuple:
     
 
 def solar_pv_benchmark() -> None:
+    """
+    Calculate the benchmark solar PV energy output for a solar PV system.
+    """
     logging.info('Running Solar PV benchmarking')
     num_units = st.session_state.get("solar_pv_num_units")
     installation_dates = st.session_state.get("installation_dates")

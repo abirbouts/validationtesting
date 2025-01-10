@@ -1,3 +1,7 @@
+"""
+This module contains the Streamlit page for creating a new project or loading an existing configuration file.
+"""
+
 import streamlit as st
 from pathlib import Path
 from config.path_manager import PathManager
@@ -47,10 +51,6 @@ def load_existing_project(uploaded_file) -> bool:
     folder structure for the project if it doesn't already exist. It then saves the uploaded
     file to the project folder and initializes various session state parameters from the 
     configuration file.
-    Args:
-        uploaded_file (UploadedFile): The uploaded project configuration file.
-    Returns:
-        bool: True if the project was successfully loaded, False otherwise.
     """
     try:
         project_name = Path(uploaded_file.name).stem

@@ -1,3 +1,7 @@
+"""
+This module contains functions for validating the generator model.
+"""
+
 import streamlit as st
 import pandas as pd
 import logging
@@ -5,6 +9,7 @@ from config.path_manager import PathManager
 import datetime
 
 def get_efficiency_from_tabular(load: float, type_int: int) -> float:
+    """Extract the efficiency from the tabular data for the specified load and generator type."""
     project_name = st.session_state.get("project_name")
     dynamic_efficiency_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"generator_dynamic_efficiency_type_{type_int}.csv"
     
@@ -37,6 +42,7 @@ def get_efficiency_from_tabular(load: float, type_int: int) -> float:
     return interpolated_efficiency
 
 def get_efficiency_from_formula(generator_energy: float, type: int) -> float:
+    """Calculate the efficiency using the formula for the specified generator type."""
     # Get the formula for the specified generator type
     formula = st.session_state.generator_efficiency_formula[type]  # Example: "100 * (P / 20.0)"
     
@@ -51,12 +57,14 @@ def get_efficiency_from_formula(generator_energy: float, type: int) -> float:
 
 
 def test_power_limits(power: float, max_power: float, min_power: float) -> bool:
+    """Test if the power is within the specified limits."""
     if power > max_power or power < min_power:
         return False
     else: 
         return True
 
 def temporal_degradation_efficiency(efficiency: float, degradation_rate: float, date: datetime.date, installation_date: datetime.date) -> float:
+    """Adjust the efficiency based on temporal degradation."""
     def get_years_since_install(installation_date: datetime.date, current_date: datetime.date) -> float:
         # Ensure both are 'date' objects
         installation_date = installation_date.date()
@@ -73,15 +81,6 @@ def temporal_degradation_efficiency(efficiency: float, degradation_rate: float, 
 def get_fuel_consumption(energy: float, lhv: float, efficiency: float) -> float:
     """
     Calculate the fuel consumption for a generator based on its power, LHV, and efficiency.
-
-    Args:
-    - generator_power_kw (float): Energy output of the generator in kWh.
-    - lhv_kwh_per_unit (float): Lower Heating Value of the fuel in kWh per unit (e.g., kWh/liter for diesel).
-    - efficiency (float): Efficiency of the generator as a decimal (e.g., 0.35 for 35% efficiency).
-    - operating_hours (float): Number of hours the generator is running (default is 1 hour).
-
-    Returns:
-    - fuel_consumption (float): Fuel consumption in units (e.g., liters).
     """
 
     # Energy input needed, accounting for efficiency
@@ -93,6 +92,7 @@ def get_fuel_consumption(energy: float, lhv: float, efficiency: float) -> float:
     return fuel_consumption
     
 def generator_validation_testing() -> None:
+    """Run the generator validation testing."""
     logging.info('Running generator validation testing')
     project_name = st.session_state.get("project_name")
     generator_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"model_output_generator.csv"

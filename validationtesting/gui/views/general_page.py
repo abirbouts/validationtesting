@@ -2,26 +2,17 @@
 This script defines a Streamlit page for configuring general project information, including location selection.
 It includes functions to get coordinates from an address, handle location input by clicking on a map, and render the main page with 
 options to select the project location either by entering an address, clicking on a map or inputting coordinates.
-Functions:
-    get_coordinates(address: str) -> Tuple[float, float]:
-        Get the latitude and longitude coordinates for the given address.
-    handle_location_input(address: str) -> None:
-        Handle the input address to get the coordinates and update the session state.
-    general():
-        Renders the main Streamlit page for configuring general project information, including location selection 
-        either by entering an address or manually inputting coordinates.
 """
 
 
 import streamlit as st
-import pandas as pd
 import folium
 import datetime as dt
 from validationtesting.gui.views.utils import initialize_session_state
 from streamlit_folium import st_folium
 from geopy.geocoders import Nominatim
 from geopy.exc import GeopyError
-from typing import Tuple, Optional
+from typing import Tuple
 
 def get_coordinates(address: str) -> Tuple[float, float]:
     """Get the latitude and longitude coordinates for the given address."""
@@ -48,12 +39,13 @@ def handle_location_input(address: str) -> None:
         st.error(f"Could not find location: {e}")
 
 def general() -> None:
-    """Streamlit page for configuring advanced settings."""
+    """Streamlit page for configuring general settings."""
     # Page title and description
     st.title("General Project Information")
 
     initialize_session_state(st.session_state.default_values, 'general_info')
 
+    # Define start and end date for the project
     start_date = st.date_input("Start Date", 
                                value=st.session_state.start_date.date())
     start_date = dt.datetime.combine(start_date, dt.time.min)
@@ -62,11 +54,13 @@ def general() -> None:
                              value=st.session_state.end_date)
     st.session_state.end_date = dt.datetime.combine(end_date, dt.time.min)
     
+    # Define discount rate
     if st.session_state.economic_validation:
         st.session_state.discount_rate = st.number_input("Discount Rate (%)", 
                                                         value=st.session_state.discount_rate, 
                                                         format="%.2f")
-        
+
+    # Define project location   
     if st.session_state.technical_validation:
         if st.session_state.solar_pv or st.session_state.wind:
             # Location selection

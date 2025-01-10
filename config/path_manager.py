@@ -16,15 +16,10 @@ class PathManager:
     CONFIG_FOLDER_PATH: Path = ROOT_PATH / 'config'
     PROJECTS_FOLDER_PATH: Path = ROOT_PATH / 'projects'
     DEFAULT_YAML_FILE_PATH: Path = CONFIG_FOLDER_PATH / 'default.yaml'
-    POWER_CURVE_FILE_PATH: Path = CONFIG_FOLDER_PATH / 'Wind Turbine Power Curves.xlsx'
 
     # Define inputs path
     INPUTS_FOLDER_PATH: Path = ROOT_PATH / 'validationtesting' / 'inputs'
     RESULTS_FOLDER_PATH: Path = ROOT_PATH / 'validationtesting' / 'results'
-    DEMAND_FOLDER_PATH: Path = INPUTS_FOLDER_PATH / 'demand files'
-    AGGREGATED_DEMAND_FILE_PATH: Path = DEMAND_FOLDER_PATH / 'Aggregated Demand.csv'
-    RESOURCE_FILE_PATH: Path = INPUTS_FOLDER_PATH / 'Resources Availability.csv'
-    TEMPERATURE_FILE_PATH: Path = INPUTS_FOLDER_PATH / 'Temperature.csv'
     FUEL_SPECIFIC_COST_FILE_PATH: Path = INPUTS_FOLDER_PATH / 'Fuel Specific Cost.csv'
     GRID_AVAILABILITY_FILE_PATH: Path = INPUTS_FOLDER_PATH / 'Grid Availability.csv'
     BENCHMARK_RESULTS_FILE_PATH: Path = RESULTS_FOLDER_PATH / 'Benchmark Results.csv'

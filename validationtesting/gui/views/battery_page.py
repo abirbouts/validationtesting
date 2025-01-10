@@ -1,31 +1,21 @@
 """
-This script defines a Streamlit page for configuring battery parameters. 
-It includes functions to initialize session state variables, render input forms for battery specifications, 
-handle installation dates and time zones, and render the main battery configuration page.
-Functions:
-    enter_specifications(i):
-        Opens a dialog box to enter battery specifications for a given battery type.
-    render_timezone_selector():
-        Renders a time zone selector with a comprehensive list of time zones and country names.
-    convert_dates_to_utc(installation_dates, timezone_str):
-        Converts a list of installation dates to UTC based on the selected time zone.
-    combine_date_and_time(date_value, time_value):
-        Combines a date and time into a datetime object.
-    battery():
-        Renders the main Streamlit page for configuring battery parameters, including number of units, 
-        installation dates, battery types, efficiency options, and other parameters.
+This file contains the code for the Battery page of the GUI.
+The user can specify the specifications for the batteries.
 """
 
 import streamlit as st
-from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state, timezone_selector
+from validationtesting.gui.views.utils import initialize_session_state, timezone_selector, convert_dates_to_utc, combine_date_and_time
 import datetime as dt
-import pytz
 import numpy as np
 
 # Function to initialize session state variables (opens dialog box)
 @st.dialog("Enter Battery Specifications")
 def enter_specifications(i: int) -> None:
+    """
+    Displays input fields for entering battery specifications for a given battery type.
+    This function dynamically generates input fields for various battery specifications based on the 
+    current state of the application. It handles both technical and economic validation scenarios.
+    """
     st.write(f"Enter Battery Specifications for Type {i+1}.")
 
     # Battery Lifetime
@@ -154,6 +144,8 @@ def enter_specifications(i: int) -> None:
 
             if len(st.session_state.battery_temporal_degradation_rate) != st.session_state.num_battery_types:
                 st.session_state.battery_temporal_degradation_rate = [0.0] * st.session_state.num_battery_types
+
+        # Battery Cyclic Degradation Rate (if needed)
         if st.session_state.battery_cyclic_degradation:
             st.session_state.battery_chemistry[i] = st.selectbox(
                 "Battery Chemistry:",
@@ -212,31 +204,10 @@ def enter_specifications(i: int) -> None:
     if st.button("Close"):
         st.rerun()
 
-# Function to convert installation dates to UTC
-def convert_dates_to_utc(installation_dates: list[dt.datetime], timezone_str: str) -> list[dt.datetime]:
-    # Load the timezone
-    local_tz = pytz.timezone(timezone_str)
-    # Convert each date to UTC
-    installation_dates_utc = []
-    for date in installation_dates:
-        if isinstance(date, dt.datetime):
-            # Localize the date to the selected timezone and convert to UTC
-            localized_date = local_tz.localize(date)
-            utc_date = localized_date.astimezone(pytz.UTC).replace(tzinfo=None)
-            installation_dates_utc.append(utc_date)
-        else:
-            installation_dates_utc.append(None)  # Handle cases where date is not provided
-
-    return installation_dates_utc
-
-# Function to combine date and time into a datetime object
-def combine_date_and_time(date_value: dt.date, time_value: dt.time) -> dt.datetime:
-    """Combine date and time into a datetime object."""
-    return dt.datetime.combine(date_value, time_value)
 
 # Function to render the battery configuration page
 def battery() -> None:
-    """Streamlit page for configuring renewable energy technology parameters."""
+    """Streamlit page for configuring battery parameters."""
     st.title("Battery")
     st.subheader("Define the parameters for the Batteries")
 
@@ -246,6 +217,7 @@ def battery() -> None:
     # Number of battery units
     st.session_state.battery_num_units = st.number_input("Enter the number of units", min_value=1, value = st.session_state.battery_num_units)
     
+    # Installation dates
     # Adjust the installation dates list if the number of units changes
     if len(st.session_state.battery_installation_dates) != st.session_state.battery_num_units:
         st.session_state.battery_installation_dates = [dt.datetime.now() for _ in range(st.session_state.battery_num_units)]
@@ -325,12 +297,14 @@ def battery() -> None:
         col1, col2 = st.columns(2)
         with col1:
             st.session_state.battery_same_type = st.checkbox("Same type for all units", value = st.session_state.battery_same_type)
+        
         if st.session_state.battery_same_type:
-            # Select the Type 1 for all units
+            # Select Type 1 for all units
             st.session_state.num_battery_types = 1
             st.session_state.battery_types = ['Type 1']  
             for i in range(st.session_state.battery_num_units):
                 st.session_state.battery_type[i] = st.session_state.battery_types[0]
+        
         else:
             # Input the number of types
             with col2:
@@ -339,7 +313,6 @@ def battery() -> None:
             for i in range(st.session_state.num_battery_types):
                 st.session_state.battery_types[i] = f'Type {i+1}'
 
-            # Multiple select boxes for each unit
             col1, col2 = st.columns(2)
             for i in range(st.session_state.battery_num_units):
                 # Create a dropdown to select type for each unit
@@ -398,7 +371,7 @@ def battery() -> None:
             st.session_state.battery_dynamic_inverter_efficiency = False
 
 
-    # Render the battery specifications for each type
+    # Display the input fields for each battery type
     st.write("Enter Battery parameters:")
     col1, col2 = st.columns(2)
     for i in range(st.session_state.num_battery_types):

@@ -1,15 +1,24 @@
+"""
+This file contains the code for the generator page of the GUI.
+The user can specify the specifications for the generators.
+"""
+
 import streamlit as st
 from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state, timezone_selector
+from validationtesting.gui.views.utils import initialize_session_state, timezone_selector, convert_dates_to_utc, combine_date_and_time
 import datetime as dt
-import pytz
 import pandas as pd
-import numpy as np
 
 @st.dialog("Enter Generator Specifications")
 def enter_specifications(i: int) -> None:
+    """
+    Displays input fields for entering generator specifications for a given generator type.
+    This function dynamically generates input fields for various generator specifications based on the
+    current state of the application. It handles both technical and economic validation scenarios.
+    """
     st.write(f"Enter Generator Specifications for Type {i+1}.")
 
+    # Lifetime
     if len(st.session_state.generator_lifetime) != st.session_state.num_generator_types:
         st.session_state.generator_lifetime.extend([0] * (st.session_state.num_generator_types - len(st.session_state.generator_lifetime)))
     st.session_state.generator_lifetime[i] = st.number_input(
@@ -20,7 +29,7 @@ def enter_specifications(i: int) -> None:
     )
 
     if st.session_state.technical_validation:
-
+        # Generator Efficiency
         if not st.session_state.generator_dynamic_efficiency:
             if len(st.session_state.generator_efficiency) != st.session_state.num_generator_types:
                 st.session_state.generator_efficiency.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_efficiency)))
@@ -31,6 +40,7 @@ def enter_specifications(i: int) -> None:
                 key=f"generator_efficiency_{i}"
             )
 
+        # Generator Minimum and Maximum Power
         if len(st.session_state.generator_min_power) != st.session_state.num_generator_types:
             st.session_state.generator_min_power.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_min_power)))
         st.session_state.generator_min_power[i] = st.number_input(
@@ -39,7 +49,6 @@ def enter_specifications(i: int) -> None:
             value=st.session_state.generator_min_power[i],
             key=f"generator_min_power_{i}"
         )
-        
         if len(st.session_state.generator_max_power) != st.session_state.num_generator_types:
             st.session_state.generator_max_power.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_max_power)))
         st.session_state.generator_max_power[i] = st.number_input(
@@ -49,6 +58,7 @@ def enter_specifications(i: int) -> None:
             key=f"generator_max_power_{i}"
         )
 
+        # Generator Fuel LHV
         if len(st.session_state.generator_fuel_lhv) != st.session_state.num_generator_types:
             st.session_state.generator_fuel_lhv.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_fuel_lhv)))
         st.session_state.generator_fuel_lhv[i] = st.number_input(
@@ -58,6 +68,7 @@ def enter_specifications(i: int) -> None:
             key=f"generator_fuel_lhv_{i}"
         )
 
+        # Generator Temporal Degradation
         if st.session_state.generator_temporal_degradation:
             if len(st.session_state.generator_temporal_degradation_rate) != st.session_state.num_generator_types:
                 st.session_state.generator_temporal_degradation_rate.extend([0.0] * (st.session_state.num_generator_types - len(st.session_state.generator_temporal_degradation_rate)))
@@ -68,6 +79,7 @@ def enter_specifications(i: int) -> None:
                 key=f"generator_degradation_rate_{i}"
             )
         
+        # Generator Dynamic Efficiency
         if st.session_state.generator_dynamic_efficiency:
             if len(st.session_state.generator_dynamic_efficiency_type) != st.session_state.num_generator_types:
                 st.session_state.generator_dynamic_efficiency_type.extend([None] * (st.session_state.num_generator_types - len(st.session_state.generator_dynamic_efficiency_type)))
@@ -97,12 +109,13 @@ def enter_specifications(i: int) -> None:
                 # Display the table for editing
                 edited_table = st.data_editor(
                     df,
-                    num_rows="dynamic",  # Allows adding/removing rows
+                    num_rows="dynamic", 
                     use_container_width=True,
                     key="csv_table_editor"
                 )
 
             else:
+                # Input Efficiency as a formula
                 st.session_state.generator_efficiency_formula[i] = st.text_input(
                     f"Generator Efficiency Formula:", 
                     value=st.session_state.generator_efficiency_formula[i] if st.session_state.generator_efficiency_formula[i] else f"30 * (P / {st.session_state.generator_max_power[i]})",
@@ -110,7 +123,7 @@ def enter_specifications(i: int) -> None:
                 )
 
     if st.session_state.economic_validation:
-        # generator Investment Cost
+        # Investment Cost
         if len(st.session_state.generator_investment_cost) != st.session_state.num_generator_types:
             st.session_state.generator_investment_cost = [0.0] * st.session_state.num_generator_types
         st.session_state.generator_investment_cost[i] = st.number_input(
@@ -120,7 +133,7 @@ def enter_specifications(i: int) -> None:
             key=f"generator_investment_cost_{i}"
         )
 
-        # generator Yearly Operation and Maintenance Cost
+        # Yearly Operation and Maintenance Cost
         if len(st.session_state.generator_maintenance_cost) != st.session_state.num_generator_types:
             st.session_state.generator_maintenance_cost = [0.0] * st.session_state.num_generator_types
         st.session_state.generator_maintenance_cost[i] = st.number_input(
@@ -138,30 +151,8 @@ def enter_specifications(i: int) -> None:
                 sorted_table.to_csv(dynamic_efficiency_path, index=False)
         st.rerun()
 
-# Function to convert installation dates to UTC
-def convert_dates_to_utc(installation_dates: list[dt.datetime], timezone_str: str) -> list[dt.datetime]:
-    # Load the timezone
-    local_tz = pytz.timezone(timezone_str)
-
-    # Convert each date to UTC
-    installation_dates_utc = []
-    for date in installation_dates:
-        if isinstance(date, dt.datetime):
-            # Localize the date to the selected timezone and convert to UTC
-            localized_date = local_tz.localize(date)
-            utc_date = localized_date.astimezone(pytz.UTC).replace(tzinfo=None)
-            installation_dates_utc.append(utc_date)
-        else:
-            installation_dates_utc.append(None)  # Handle cases where date is not provided
-
-    return installation_dates_utc
-
-def combine_date_and_time(date_value: dt.date, time_value: dt.time) -> dt.datetime:
-    """Combine date and time into a datetime object."""
-    return dt.datetime.combine(date_value, time_value)
-
 def generator() -> None:
-    """Streamlit page for configuring renewable energy technology parameters."""
+    """Streamlit page for configuring generator parameters."""
     st.title("Generator")
     st.subheader("Define the parameters for the Generators")
 
@@ -182,7 +173,6 @@ def generator() -> None:
 
             if st.session_state.generator_same_date:
                 if 'installation_dates' not in st.session_state or len(st.session_state.generator_installation_dates) != st.session_state.generator_num_units:
-                    # Initialize with today's date at 00:00
                     today_midnight = dt.datetime.combine(dt.date.today(), dt.time.min)  # Today's date at 00:00
                     st.session_state.generator_installation_dates = [today_midnight for _ in range(st.session_state.generator_num_units)]
 
@@ -226,7 +216,6 @@ def generator() -> None:
                     # Combine date and time into a datetime object
                     st.session_state.generator_installation_dates[i] = combine_date_and_time(input_date, input_time)
         else:
-            # Only one unit, so no checkbox needed
             st.write("Enter the installation date for the unit:")
             col1, col2 = st.columns(2)
             with col1:
@@ -286,11 +275,12 @@ def generator() -> None:
                         key=f"type_select_{i}"
                     )
     else:
-        # If there's only one unit, default to selecting a type for that unit
+        # If there's only one unit, default to selecting Type 1 for that unit
         st.session_state.num_generator_types = 1
         st.session_state.generator_types = ['Type 1']        
         st.session_state.generator_type[0] = st.session_state.generator_types[0]
 
+    # Checkboxes to choose what should be included in calculations
     if st.session_state.technical_validation:
         st.write("Choose what was included in your calculations:")
 
@@ -312,6 +302,7 @@ def generator() -> None:
     if st.session_state.economic_validation:
         # generator fuel price
         st.session_state.generator_variable_fuel_price = st.checkbox("Variable Fuel Price", value=st.session_state.generator_variable_fuel_price)
+        # if variable fuel price is selected, input a table
         if st.session_state.generator_variable_fuel_price:
             project_name = st.session_state.get("project_name")
             fuel_price_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"generator_fuel_price.csv"
@@ -331,7 +322,7 @@ def generator() -> None:
             # Display the table for editing
             edited_table = st.data_editor(
                 df,
-                num_rows="fixed",  # Disallow adding/removing rows
+                num_rows="fixed", 
                 use_container_width=True,
                 key="fuel_price_table_editor"
             )
@@ -339,13 +330,14 @@ def generator() -> None:
             edited_table.to_csv(fuel_price_path, index=False)
 
         else:
+            # input a single fuel price
             st.session_state.generator_fuel_price = st.number_input(
                 f"Fuel Price [USD/l]:", 
                 min_value=0.0, 
                 value=st.session_state.generator_fuel_price,
             )
 
-
+    # Display the input fields for each generator type
     st.write("Enter Generator parameters:")
     col1, col2 = st.columns(2)
     for i in range(st.session_state.num_generator_types):

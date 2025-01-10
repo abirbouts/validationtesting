@@ -1,100 +1,19 @@
+"""
+This file contains the code for the Solar Irradiation page in the GUI.
+The user can upload their own solar irradiation data or download it from PVGIS.
+"""
+
 import streamlit as st
 import pandas as pd
 from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface, time_format_timezone_selectors
+from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface, time_format_timezone_selectors, load_csv_data, load_timeseries_csv_with_timezone
 import datetime as dt
-import pytz
 import requests
 
-
-def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str) -> pd.DataFrame:
-    """
-    Load CSV data with given delimiter and decimal options.
-    
-    Args:
-        uploaded_file: The uploaded CSV file.
-        delimiter (str): The delimiter used in the CSV file.
-        decimal (str): The decimal separator used in the CSV file.
-        parameter (str): The name of the parameter (used for column naming).
-    
-    Returns:
-        Optional[pd.DataFrame]: The loaded DataFrame or None if an error occurred.
-    """
-    try:
-        uploaded_file.seek(0)
-        data = pd.read_csv(uploaded_file, delimiter=delimiter, decimal=decimal)
-        data = data.apply(pd.to_numeric, errors='coerce')
-        
-        if len(data.columns) > 1:
-            selected_column = st.selectbox(f"Select the column representing {parameter}", data.columns)
-            data = data[[selected_column]]
-        
-        data.index = range(1, len(data) + 1)
-        data.index.name = 'Periods'
-        
-        if data.empty:
-            st.warning("No data found in the CSV file. Please check delimiter and decimal settings.")
-        elif data.isnull().values.any():
-            st.warning("Some values could not be converted to numeric. Please check the data.")
-        else:
-            st.success(f"Data loaded successfully using delimiter '{delimiter}' and decimal '{decimal}'")
-        
-        return data
-    except Exception as e:
-        st.error(f"Error during import of CSV data: {e}")
-        return None
-    
-# Function to load and process time series data with time zones and format handling
-def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: str, time_format: str, timezone: str) -> pd.DataFrame:
-    """
-    Load CSV time-series data with given delimiter, decimal options, and convert the time column to UTC datetime.
-    
-    Args:
-        uploaded_file: The uploaded CSV file.
-        delimiter (str): The delimiter used in the CSV file.
-        decimal (str): The decimal separator used in the CSV file.
-        time_format (str): The format of the time column to parse datetime (e.g., '%Y-%m-%d %H:%M:%S').
-        timezone (str): The time zone of the data (e.g., 'Europe/Berlin').
-        parameter (str): The name of the data parameter (e.g., temperature or irradiation).
-    
-    Returns:
-        Optional[pd.DataFrame]: The loaded DataFrame with time in UTC or None if an error occurred.
-    """
-    try:
-        uploaded_file.seek(0)
-        data = pd.read_csv(uploaded_file, delimiter=delimiter, decimal=decimal)
-        
-        if data.empty:
-            st.warning("No data found in the CSV file. Please check the file.")
-            return None
-        
-        # Select the time column
-        time_column = st.selectbox(f"Select the column representing time:", data.columns)
-        
-        # Convert the time column to datetime using the provided format and time zone
-        try:
-            data[time_column] = pd.to_datetime(data[time_column], format=time_format, errors='coerce')
-        except ValueError as e:
-            st.error(f"Error in parsing time column: {e}")
-            return None
-
-        # Localize to the selected timezone and convert to UTC
-        local_tz = pytz.timezone(timezone)
-        time = data[time_column].apply(lambda x: local_tz.localize(x).astimezone(pytz.UTC))
-
-        if time.empty:
-            st.warning("No valid time series data found. Please check the CSV file.")
-        else:
-            st.success(f"Time loaded successfully for Time and converted to UTC.")
-
-        return time
-    
-    except Exception as e:
-        st.error(f"Error during import of time from CSV: {e}")
-        return None
-
-
 def download_pvgis_pv_data(lat, lon) -> pd.DataFrame:
+    """
+    Function to download solar irradiation data from PVGIS.
+    """
     URL = 'https://re.jrc.ec.europa.eu/api/tmy?lat=' + str(lat) + '&lon=' + str(lon) + '&outputformat=json'
     # Make the request
     response = requests.get(URL)
@@ -122,11 +41,16 @@ def download_pvgis_pv_data(lat, lon) -> pd.DataFrame:
 
 
 def save_solar_irradiation_data(resource_data: pd.DataFrame, project_name: str) -> None:
+    """
+    Save data to a CSV file in the project's inputs folder.
+    """
     project_folder_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / "solar_irradiation.csv"
     resource_data.to_csv(project_folder_path, index=False)
 
 def irradiation_data() -> None:
-    """Streamlit page for configuring renewable energy technology parameters."""
+    """
+    Streamlit page for uploading solar irradiation data.
+    """
     st.title("Solar Irradiation")
     st.subheader("Upload the model's solar PV output")
 
@@ -134,6 +58,7 @@ def irradiation_data() -> None:
     initialize_session_state(st.session_state.default_values, 'solar_irradiation_parameters')
     project_name = st.session_state.get("project_name")
 
+    # Check if data has been uploaded and show the data 
     if st.session_state.irradiation_data_uploaded == True:
         st.write("Data has been uploaded:")
         project_folder_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / "solar_irradiation.csv"
@@ -149,6 +74,7 @@ def irradiation_data() -> None:
             ("Upload your own data", "Download from PVGIS")
         )
 
+        # Upload interface
         if data_source == "Upload your own data":
             uploaded_file, delimiter, decimal = csv_upload_interface(f"solar")
             if uploaded_file:
@@ -166,7 +92,7 @@ def irradiation_data() -> None:
                         ]
                     )
 
-                    # Based on the selected input type, adjust the options or store in session state
+                    # Based on the selected input type, adjust the upload options and store in session state
                     if st.session_state.selected_input_type == "GHI & DHI":
                         st.session_state.Input_GHI = True
                         st.session_state.Input_DHI = True
@@ -206,7 +132,7 @@ def irradiation_data() -> None:
                     # Combine all data into a single DataFrame (for all elements)
                     irradiation_data = pd.DataFrame({
                         'UTC Time': time_data.values,
-                        **data_dict  # Dynamically unpack the dictionary
+                        **data_dict 
                     })
 
                     # Display the shape of the full DataFrame
@@ -220,7 +146,8 @@ def irradiation_data() -> None:
                         save_solar_irradiation_data(irradiation_data, project_name)
                         st.session_state.irradiation_data_uploaded = True  # Set the flag to True since data is now uploaded
                         st.rerun()
-
+        
+        # Download data from PVGIS
         elif data_source == "Download from PVGIS":
             if st.button(f"Download Solar Data from PVGIS", key=f"download_solar_data"):
                 with st.spinner('Downloading data from PVGIS...'):

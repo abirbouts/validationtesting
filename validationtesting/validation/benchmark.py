@@ -1,17 +1,20 @@
+"""
+This module is used to calculate the benchmark of the model output. 
+It uses the solar_pv_benchmark and wind_benchmark to calculate the benchmark and save the combined benchmark in a CSV file.
+"""
+
 import streamlit as st
 import pandas as pd
 from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state
-import datetime as dt
 import logging
 
 from validationtesting.validation.solar_pv_validation import solar_pv_benchmark
 from validationtesting.validation.wind_validation import wind_benchmark
-from validationtesting.validation.generator_validation import generator_validation_testing
-from validationtesting.validation.battery_validation import battery_validation_testing
 
 class Benchmark():
+    """Class to calculate the benchmark of the model output"""
     def __init__(self) -> None:
+        """Initialize the Benchmark class, run functions to calculate the benchmark and save the combined benchmark"""
         self.logger = logging.getLogger('Benchmark')
         self.logger.info("Starting Benchmark calculation...")
         self.project_name = st.session_state.get("project_name")
@@ -36,6 +39,7 @@ class Benchmark():
         self.logger.info(f"Combined Benchmark saved in {combined_data_path}")
 
     def create_df(self, resource: str) -> pd.DataFrame:
+        """Create a dataframe of the model and benchmark data for one resource"""
         benchmark_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results" / f"{resource}_validation.csv"
         model_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "inputs" / f"model_output_{resource}.csv"
         benchmark_df = pd.read_csv(benchmark_data_path)

@@ -1,9 +1,14 @@
+"""
+This module is used to validate the energy balance of the system.
+"""
+
 import streamlit as st
 import pandas as pd
 from config.path_manager import PathManager
 
 
 def energy_balance_validation() -> None:
+    """Calculate the energy balance of the system and save the result in a CSV file."""
     project_name = st.session_state.get("project_name")    
 
     used_components = []

@@ -1,13 +1,22 @@
+"""
+This file contains the code for the Solar PV page of the GUI.
+The user can specify the specifications for the solar PV system.
+"""
+
 import streamlit as st
-from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state, timezone_selector
+from validationtesting.gui.views.utils import initialize_session_state, timezone_selector, combine_date_and_time, convert_dates_to_utc
 import datetime as dt
-import pytz
 
 @st.dialog("Enter Solar PV Specifications")
 def enter_specifications(i: int) -> None:
+    """
+    Displays input fields for entering solar PV specifications for a given solar PV type.
+    This function dynamically generates input fields for various solar PV specifications based on the
+    current state of the application. It handles both technical and economic validation scenarios.
+    """
     st.write(f"Enter Solar PV Specifications for Type {i+1}.")
 
+    # Lifetime
     if len(st.session_state.pv_lifetime) != st.session_state.num_solar_pv_types:
         st.session_state.pv_lifetime = [0] * st.session_state.num_solar_pv_types
     st.session_state.pv_lifetime[i] = st.number_input(
@@ -15,7 +24,9 @@ def enter_specifications(i: int) -> None:
         min_value=0, 
         value=st.session_state.pv_lifetime[i])
 
+    # Input technical specifications
     if st.session_state.technical_validation:
+        # Solar PV calculation type
         st.session_state.solar_pv_calculation_type[i] = st.selectbox(
             f"Using what was the Solar PV energy calculated?",
             ['Area and Efficiency', 'Nominal Power'],
@@ -23,9 +34,8 @@ def enter_specifications(i: int) -> None:
             key=f"calculation_type_select_{i}"
         )
 
-
-
         if st.session_state.solar_pv_calculation_type[i] == 'Area and Efficiency':
+            # Solar PV area
             if len(st.session_state.pv_area) != st.session_state.num_solar_pv_types:
                 st.session_state.pv_area = [0.0] * st.session_state.num_solar_pv_types
             st.session_state.pv_area[i] = st.number_input(
@@ -33,6 +43,7 @@ def enter_specifications(i: int) -> None:
                 min_value=0.0, 
                 value=st.session_state.pv_area[i])
 
+            # Solar PV efficiency
             if len(st.session_state.pv_efficiency) != st.session_state.num_solar_pv_types:
                 st.session_state.pv_efficiency = [0.0] * st.session_state.num_solar_pv_types
             st.session_state.pv_efficiency[i] = st.number_input(
@@ -41,6 +52,7 @@ def enter_specifications(i: int) -> None:
                 value=st.session_state.pv_efficiency[i])
         
         elif st.session_state.solar_pv_calculation_type[i] == 'Nominal Power':
+            # Solar PV nominal power
             if len(st.session_state.pv_nominal_power) != st.session_state.num_solar_pv_types:
                 st.session_state.pv_nominal_power = [0.0] * st.session_state.num_solar_pv_types
             st.session_state.pv_nominal_power[i] = st.number_input(
@@ -48,13 +60,15 @@ def enter_specifications(i: int) -> None:
                 min_value=0.0, 
                 value=st.session_state.pv_nominal_power[i])
 
+        # Solar PV tilt angle
         if len(st.session_state.pv_theta_tilt) != st.session_state.num_solar_pv_types:
             st.session_state.pv_theta_tilt = [0.0] * st.session_state.num_solar_pv_types
         st.session_state.pv_theta_tilt[i] = st.number_input(
             f"Type {i+1} PV tilt angle [°]:", 
             min_value=0.0, 
             value=st.session_state.pv_theta_tilt[i])
-        
+
+        # Solar PV azimuth angle
         if len(st.session_state.pv_azimuth) != st.session_state.num_solar_pv_types:
             st.session_state.pv_azimuth = [0.0] * st.session_state.num_solar_pv_types
         st.session_state.pv_azimuth[i] = st.number_input(
@@ -62,7 +76,8 @@ def enter_specifications(i: int) -> None:
             min_value=-180.0,
             max_value=180.0,
             value=st.session_state.pv_azimuth[i])
-        
+
+        # Solar PV degradation
         if st.session_state.pv_degradation:
             if len(st.session_state.pv_degradation_rate) != st.session_state.num_solar_pv_types:
                 st.session_state.pv_degradation_rate = [0.0] * st.session_state.num_solar_pv_types
@@ -71,6 +86,7 @@ def enter_specifications(i: int) -> None:
                 min_value=0.0, 
                 value=st.session_state.pv_degradation_rate[i])
         
+        # Solar PV temperature dependent efficiency
         if st.session_state.pv_temperature_dependent_efficiency:
             if len(st.session_state.pv_temperature_coefficient) != st.session_state.num_solar_pv_types:
                 st.session_state.pv_temperature_coefficient = [0.0] * st.session_state.num_solar_pv_types
@@ -106,6 +122,7 @@ def enter_specifications(i: int) -> None:
                 min_value=0.0, 
                 value=st.session_state.pv_I_ref_NOCT[i])
         
+        # Solar PV dynamic inverter efficiency
         if not st.session_state.pv_dynamic_inverter_efficiency:
             if len(st.session_state.pv_inverter_efficiency) != st.session_state.num_solar_pv_types:
                 st.session_state.pv_inverter_efficiency = [0.0] * st.session_state.num_solar_pv_types
@@ -113,9 +130,10 @@ def enter_specifications(i: int) -> None:
                 f"Type {i+1} inverter efficiency [%]:", 
                 min_value=0.0, 
                 value=st.session_state.pv_inverter_efficiency[i])
-            
+
+    # Input economic specifications    
     if st.session_state.economic_validation:
-        # solar_pv Investment Cost
+        # Investment Cost
         if len(st.session_state.solar_pv_investment_cost) != st.session_state.num_solar_pv_types:
             st.session_state.solar_pv_investment_cost = [0.0] * st.session_state.num_solar_pv_types
         st.session_state.solar_pv_investment_cost[i] = st.number_input(
@@ -125,7 +143,7 @@ def enter_specifications(i: int) -> None:
             key=f"solar_pv_investment_cost_{i}"
         )
 
-        # solar_pv Yearly Operation and Maintenance Cost
+        # Yearly Operation and Maintenance Cost
         if len(st.session_state.solar_pv_maintenance_cost) != st.session_state.num_solar_pv_types:
             st.session_state.solar_pv_maintenance_cost = [0.0] * st.session_state.num_solar_pv_types
         st.session_state.solar_pv_maintenance_cost[i] = st.number_input(
@@ -139,30 +157,11 @@ def enter_specifications(i: int) -> None:
     if st.button("Close"):
         st.rerun()
 
-# Function to convert installation dates to UTC
-def convert_dates_to_utc(installation_dates: list, timezone_str: str) -> list:
-    # Load the timezone
-    local_tz = pytz.timezone(timezone_str)
-
-    # Convert each date to UTC
-    installation_dates_utc = []
-    for date in installation_dates:
-        if isinstance(date, dt.datetime):
-            # Localize the date to the selected timezone and convert to UTC
-            localized_date = local_tz.localize(date)
-            utc_date = localized_date.astimezone(pytz.UTC)
-            installation_dates_utc.append(utc_date)
-        else:
-            installation_dates_utc.append(None)  # Handle cases where date is not provided
-
-    return installation_dates_utc
-
-def combine_date_and_time(date_value: dt.date, time_value: dt.time) -> dt.datetime:
-    """Combine date and time into a datetime object."""
-    return dt.datetime.combine(date_value, time_value)
 
 def solar_pv() -> None:
-    """Streamlit page for configuring renewable energy technology parameters."""
+    """
+    Streamlit page for configuring solar PV technology parameters.
+    """
     st.title("Solar PV")
     st.subheader("Define the parameters for Solar PV")
 
@@ -291,6 +290,7 @@ def solar_pv() -> None:
         st.session_state.solar_pv_types = ['Type 1']        
         st.session_state.solar_pv_type[0] = st.session_state.solar_pv_types[0]
 
+    # Define what should be included in the calculations
     if st.session_state.technical_validation:
         st.write("Choose what was included in your calculations:")
         col1, col2 = st.columns(2)
@@ -308,6 +308,7 @@ def solar_pv() -> None:
             max_value=100.0,
             value=st.session_state.pv_rho)
 
+    # Display the input fields for each type
     st.write("Enter the specifications for each type of solar PV:")
     col1, col2 = st.columns(2)
     for i in range(st.session_state.num_solar_pv_types):

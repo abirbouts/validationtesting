@@ -1,51 +1,21 @@
+"""
+This file contains the code for the Wind page of the GUI.
+The user can specify the specifications for the wind energy.
+"""
+
 import streamlit as st
 from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface, timezone_selector
+from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface, timezone_selector, convert_dates_to_utc, combine_date_and_time, load_csv_data
 import datetime as dt
-import pytz
 import pandas as pd
-import numpy as np
-
-def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str) -> pd.DataFrame:
-    """
-    Load CSV data with given delimiter and decimal options.
-    
-    Args:
-        uploaded_file: The uploaded CSV file.
-        delimiter (str): The delimiter used in the CSV file.
-        decimal (str): The decimal separator used in the CSV file.
-        resource_name (Optional[str]): The name of the resource (used for column naming).
-    
-    Returns:
-        Optional[pd.DataFrame]: The loaded DataFrame or None if an error occurred.
-    """
-    try:
-        uploaded_file.seek(0)
-        data = pd.read_csv(uploaded_file, delimiter=delimiter, decimal=decimal)
-        data = data.apply(pd.to_numeric, errors='coerce')
-        
-        if len(data.columns) > 1:
-            selected_column = st.selectbox(f"Select the column representing {parameter}", data.columns)
-            data = data[[selected_column]]
-        
-        data.index = range(1, len(data) + 1)
-        data.index.name = 'Periods'
-        
-        if data.empty:
-            st.warning("No data found in the CSV file. Please check delimiter and decimal settings.")
-        elif data.isnull().values.any():
-            st.warning("Some values could not be converted to numeric. Please check the data.")
-        else:
-            st.success(f"Data loaded successfully using delimiter '{delimiter}' and decimal '{decimal}'")
-        
-        return data
-    except Exception as e:
-        st.error(f"Error during import of CSV data: {e}")
-        return None
-    
 
 @st.dialog("Enter Wind Energy Specifications")
 def enter_specifications(i: int) -> None:
+    """
+    Displays input fields for entering wind energy specifications for a given wind energy type.
+    This function dynamically generates input fields for various wind energy specifications based on the
+    current state of the application. It handles both technical and economic validation scenarios.
+    """
     st.write(f"Enter Wind Energy Specifications for Type {i+1}.")
 
     # Initialize wind_lifetime if necessary
@@ -59,7 +29,7 @@ def enter_specifications(i: int) -> None:
 
     if st.session_state.technical_validation:
 
-        # Initialize wind_rated_power if necessary
+        # Rated Power
         if len(st.session_state.wind_rated_power) < st.session_state.num_wind_types:
             st.session_state.wind_rated_power.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_rated_power)))
         st.session_state.wind_rated_power[i] = st.number_input(f"Rated Power [W]:", 
@@ -68,7 +38,7 @@ def enter_specifications(i: int) -> None:
             key=f"wind_rated_power_{i}"
         )
 
-        # Initialize wind_drivetrain_efficiency if necessary
+        # Drivetrain Efficiency
         if len(st.session_state.wind_drivetrain_efficiency) < st.session_state.num_wind_types:
             st.session_state.wind_drivetrain_efficiency.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_drivetrain_efficiency)))
         st.session_state.wind_drivetrain_efficiency[i] = st.number_input(f"Drive Train Efficiency [%]:", 
@@ -76,8 +46,9 @@ def enter_specifications(i: int) -> None:
             value=st.session_state.wind_drivetrain_efficiency[i],
             key=f"wind_drivetrain_efficiency_{i}"
         )
+
+        # Inverter Efficiency
         st.session_state.wind_inverter_efficiency = [98.0]
-        # Initialize wind_inverter_efficiency if necessary
         if len(st.session_state.wind_inverter_efficiency) < st.session_state.num_wind_types:
             st.session_state.wind_inverter_efficiency.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_inverter_efficiency)))
         st.session_state.wind_inverter_efficiency[i] = st.number_input(f"Inverter Efficiency [%]:", 
@@ -86,7 +57,7 @@ def enter_specifications(i: int) -> None:
             key=f"wind_inverter_efficiency_{i}"
         )
 
-        # Initialize wind_hub_height if necessary
+        # Hub Height
         if len(st.session_state.wind_hub_height) < st.session_state.num_wind_types:
             st.session_state.wind_hub_height.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_hub_height)))
         st.session_state.wind_hub_height[i] = st.number_input(f"Hub Height [m]:", 
@@ -95,8 +66,8 @@ def enter_specifications(i: int) -> None:
             key=f"wind_hub_height_{i}"
         )
 
+        # Temporal Degradation Rate
         if st.session_state.wind_temporal_degradation:
-            # Initialize wind_temporal_degradation_rate if necessary
             if len(st.session_state.wind_temporal_degradation_rate) < st.session_state.num_wind_types:
                 st.session_state.wind_temporal_degradation_rate.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_temporal_degradation_rate)))
             st.session_state.wind_temporal_degradation_rate[i] = st.number_input(
@@ -106,6 +77,7 @@ def enter_specifications(i: int) -> None:
                 key=f"wind_degradation_rate_{i}"
             )
 
+        # Wind Power Curve
         project_name = st.session_state.get("project_name")
         wind_power_curve_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"wind_power_curve_type_{i+1}.csv"
         if len(st.session_state.wind_power_curve_uploaded) < st.session_state.num_wind_types:
@@ -152,8 +124,9 @@ def enter_specifications(i: int) -> None:
                 key="csv_table_editor"
             )
 
+    # Economic Validation
     if st.session_state.economic_validation:
-        # wind Investment Cost
+        # Investment Cost
         if len(st.session_state.wind_investment_cost) != st.session_state.num_wind_types:
             st.session_state.wind_investment_cost = [0.0] * st.session_state.num_wind_types
         st.session_state.wind_investment_cost[i] = st.number_input(
@@ -163,7 +136,7 @@ def enter_specifications(i: int) -> None:
             key=f"wind_investment_cost_{i}"
         )
 
-        # wind Yearly Operation and Maintenance Cost
+        # Yearly Operation and Maintenance Cost
         if len(st.session_state.wind_maintenance_cost) != st.session_state.num_wind_types:
             st.session_state.wind_maintenance_cost = [0.0] * st.session_state.num_wind_types
         st.session_state.wind_maintenance_cost[i] = st.number_input(
@@ -181,27 +154,6 @@ def enter_specifications(i: int) -> None:
             sorted_table.to_csv(wind_power_curve_path, index=False)
         st.rerun()
 
-# Function to convert installation dates to UTC
-def convert_dates_to_utc(installation_dates: list, timezone_str: str) -> list:
-    # Load the timezone
-    local_tz = pytz.timezone(timezone_str)
-
-    # Convert each date to UTC
-    installation_dates_utc = []
-    for date in installation_dates:
-        if isinstance(date, dt.datetime):
-            # Localize the date to the selected timezone and convert to UTC
-            localized_date = local_tz.localize(date)
-            utc_date = localized_date.astimezone(pytz.UTC).replace(tzinfo=None)
-            installation_dates_utc.append(utc_date)
-        else:
-            installation_dates_utc.append(None)  # Handle cases where date is not provided
-
-    return installation_dates_utc
-
-def combine_date_and_time(date_value: dt.date, time_value: dt.time) -> dt.datetime:
-    """Combine date and time into a datetime object."""
-    return dt.datetime.combine(date_value, time_value)
 
 def wind() -> None:
     """Streamlit page for configuring renewable energy technology parameters."""
@@ -333,6 +285,7 @@ def wind() -> None:
     if st.session_state.technical_validation:
         st.session_state.wind_temporal_degradation = st.checkbox("Temporal wind turbine degradation", value=st.session_state.wind_temporal_degradation)
 
+    # Display the input fields for each type
     st.write("Enter the specifications for each wind turbine type:")
     col1, col2 = st.columns(2)
     for i in range(st.session_state.num_wind_types):

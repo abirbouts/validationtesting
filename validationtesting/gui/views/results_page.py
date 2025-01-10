@@ -1,3 +1,7 @@
+"""
+This module contains the functions for displaying the results of the validation testing.
+"""
+
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -12,16 +16,25 @@ import pandas as pd
 
 @st.dialog("All Timestamps, where the difference between Model and Benchmark exceeds 10 percent")
 def flag_details(df, component) -> None:
+    """
+    Display the timestamps where the difference between the model and benchmark exceeds a certain threshold.
+    """
     flagged_df = df[df['Difference Exceeds 10%']]
     flagged_df = flagged_df.reset_index()[['UTC Time', f'Model {component} Energy Total [Wh]', f'Benchmark {component} Energy Total [Wh]']]
     st.write(flagged_df)
 
 @st.dialog("MAE Details")
 def mae_details(df) -> None:
+    """
+    Display the Mean Absolute Error (MAE) details for the model and benchmark.
+    """
     st.write(df)
 
 @st.dialog("All Timestamps, where the power constraints are violated")
 def power_constraints_details(df) -> None:
+    """
+    Display the timestamps where the power constraints are violated.
+    """
     if st.session_state.generator_model_output_scope == "Per Unit":
         flagged_df = df[(df[[f"Power Constraints Unit {unit+1}" for unit in range(st.session_state.generator_num_units)]] == False).any(axis=1)]
     else:
@@ -31,11 +44,17 @@ def power_constraints_details(df) -> None:
 
 @st.dialog("Fuel Consumption Details")
 def fuel_consumption_details(fuel_consumption_model, fuel_consumption_benchmark) -> None:
+    """
+    Display the fuel consumption details for the model and benchmark.
+    """
     st.write(f"Model Fuel Consumption: {fuel_consumption_model}")
     st.write(f"Benchmark Fuel Consumption: {fuel_consumption_benchmark}")
 
 @st.dialog("All Timestamps, where the charge power constraints are violated")
 def charge_power_constraints_details(df) -> None:
+    """
+    Display the timestamps where the charge power constraints are violated.
+    """
     if st.session_state.battery_model_output_scope == "Per Unit":
         flagged_df = df[(df[[f"Charge Power Constraints Unit {unit+1}" for unit in range(st.session_state.battery_num_units)]] == False).any(axis=1)]
     else:
@@ -44,6 +63,9 @@ def charge_power_constraints_details(df) -> None:
 
 @st.dialog("All Timestamps, where the state of charge constraints are violated")
 def soc_constraints_details(df) -> None:
+    """
+    Display the timestamps where the state of charge constraints are violated.
+    """
     if st.session_state.battery_model_output_scope == "Per Unit":
         flagged_df = df[(df[[f"SoC Constraints Unit {unit+1}" for unit in range(st.session_state.battery_num_units)]] == False).any(axis=1)]
     else:
@@ -51,6 +73,9 @@ def soc_constraints_details(df) -> None:
     st.write(flagged_df)
 
 def add_lcoe_metric(component: str) -> None:
+    """
+    Add the Levelized Cost of Energy (LCOE) metric to the results.
+    """
     # Load project name from session state
     project_name = st.session_state.get("project_name")
 
@@ -61,6 +86,9 @@ def add_lcoe_metric(component: str) -> None:
     df = pd.read_csv(data_path, index_col='UTC Time', parse_dates=True)
 
 def add_difference_flag(component: str) -> pd.DataFrame:
+    """
+    Display the number of timestamps where the difference between the model and benchmark exceeds a certain threshold.
+    """
     # Load project name from session state
     project_name = st.session_state.get("project_name")
 
@@ -90,6 +118,9 @@ def add_difference_flag(component: str) -> pd.DataFrame:
     return
 
 def mae_metric(component: str) -> None:
+    """
+    Display the Mean Absolute Error (MAE) metric for the model and benchmark.
+    """
     # Load project name from session state
     project_name = st.session_state.get("project_name")
 
@@ -102,6 +133,9 @@ def mae_metric(component: str) -> None:
     return
 
 def power_constraints_metric() -> None:
+    """
+    Display the number of timestamps where the power constraints are violated.
+    """
     # Load project name from session state
     project_name = st.session_state.get("project_name")
 
@@ -120,6 +154,9 @@ def power_constraints_metric() -> None:
     return
 
 def fuel_consumption_metric() -> None:
+    """
+    Display the fuel consumption difference between the model and benchmark.
+    """
     # Load project name from session state
     project_name = st.session_state.get("project_name")
 
@@ -142,6 +179,9 @@ def fuel_consumption_metric() -> None:
     return
 
 def charge_power_constraints_metric() -> None:
+    """
+    Display the number of timestamps where the charge power constraints are violated.
+    """
     # Load project name from session state
     project_name = st.session_state.get("project_name")
 
@@ -160,6 +200,9 @@ def charge_power_constraints_metric() -> None:
     return
 
 def soc_constraints_metric() -> None:
+    """
+    Display the number of timestamps where the state of charge constraints are violated.
+    """
     # Load project name from session state
     project_name = st.session_state.get("project_name")
 
@@ -178,6 +221,9 @@ def soc_constraints_metric() -> None:
     return
 
 def plot_model_vs_benchmark(component: str) -> None:
+    """
+    Generate plot to compare the model and benchmark output for a given component.
+    """
     # Load project name from session state
     project_name = st.session_state.get("project_name")
 
@@ -248,6 +294,9 @@ def plot_model_vs_benchmark(component: str) -> None:
     print(f"Daily and monthly output range plots saved in {plot_folder}.")
 
 def plot_mae(component: str) -> None:
+    """
+    Generate plot to compare the model and benchmark output for a given component using Mean Absolute Error (MAE).
+    """
     # Load project name from session state
     project_name = st.session_state.get("project_name")
     granularities = ["yearly", "monthly", "hourly"]
@@ -301,6 +350,9 @@ def plot_mae(component: str) -> None:
         plt.close()  # Close the plot to free up memory
 
 def energy_balance_plot() -> None:
+    """
+    Generate a plot of the average hourly energy balance for a single day.
+    """
     import os
     import pandas as pd
     import numpy as np
@@ -408,15 +460,24 @@ def energy_balance_plot() -> None:
     plt.close()
 
 def solar_pv_generate_plots() -> None:
+    """
+    Generate plots for the solar PV component.
+    """
     plot_model_vs_benchmark("solar_pv")
     plot_mae("solar_pv")
 
 def wind_generate_plots() -> None:
+    """
+    Generate plots for the wind component.
+    """
     plot_model_vs_benchmark("wind")
     plot_mae("wind")
 
 
 def results() -> None:
+    """
+    Streamlit page for displaying the results of the validation testing.
+    """
     st.title("Results")
 
     initialize_session_state(st.session_state.default_values, 'generate_plots')
@@ -424,7 +485,7 @@ def results() -> None:
 
     project_name = st.session_state.get("project_name")
 
-    # Dropdown for selecting the method of input
+    # Dropdown for selecting what should be displayed
     used_components = []
     if st.session_state.energy_balance:
         used_components.append("Energy Balance")
@@ -444,6 +505,7 @@ def results() -> None:
 
     plots_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "plots"
 
+    # Show Metrics
     if results_component == "Solar PV":
         col1, col2 = st.columns(2)
         with col1:
@@ -472,6 +534,7 @@ def results() -> None:
         with col2:
             soc_constraints_metric()
     
+    # Show Plots
     if results_component in ["Solar PV", "Wind", "Energy Balance"]:
         st.subheader("Plots")
         if st.button("Generate Plots"):

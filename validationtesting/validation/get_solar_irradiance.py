@@ -1,9 +1,10 @@
-import streamlit as st
-import pandas as pd
+"""
+This module contains functions to calculate the total solar irradiance on a tilted surface using Global Horizontal Irradiance (GHI)
+ and Diffuse Horizontal Irradiance (DHI) or Direct Normal Irradiance (DNI) and Diffuse Horizontal Irradiance (DHI).
+"""
+
 from math import radians as rad, sin, cos, acos, degrees, pi
-import datetime
 import logging
-from config.path_manager import PathManager
 import numpy as np
 
 def with_GHI_DHI(
@@ -19,19 +20,6 @@ def with_GHI_DHI(
     """
     Calculate the total solar irradiance on a tilted surface using Global Horizontal Irradiance (GHI) 
     and Diffuse Horizontal Irradiance (DHI).
-    Parameters:
-    theta_tilt (float): Tilt angle of the surface in degrees.
-    GHI (float): Global Horizontal Irradiance in W/m^2.
-    DHI (float): Diffuse Horizontal Irradiance in W/m^2.
-    rho (float): Ground reflectance (albedo).
-    phi_lat (float): Latitude of the location in degrees.
-    phi_lon (float): Longitude of the location in degrees.
-    days_this_year (int): Total number of days in the current year.
-    day_of_year (int): Day of the year (1-365).
-    UTC_time (float): Coordinated Universal Time.
-    albedo (bool): Whether to include ground-reflected irradiance.
-    Returns:
-    float: Total solar irradiance on the tilted surface in W/m^2.
     """
 
     rad_theta_tilt = rad(theta_tilt)
@@ -106,19 +94,6 @@ def with_DNI_DHI(
         albedo: float) -> float:
     """
     Calculate the total solar irradiance on a tilted surface using Direct Normal Irradiance (DNI) and Diffuse Horizontal Irradiance (DHI).
-    Parameters:
-    theta_tilt (float): Tilt angle of the surface in degrees.
-    DNI (float): Direct Normal Irradiance in W/m^2.
-    DHI (float): Diffuse Horizontal Irradiance in W/m^2.
-    rho (float): Ground reflectance (albedo).
-    phi_lat (float): Latitude of the location in degrees.
-    phi_lon (float): Longitude of the location in degrees.
-    days_this_year (int): Total number of days in the current year.
-    day_of_year (int): Day of the year (1-365 or 1-366 for leap years).
-    UTC_time (float): Coordinated Universal Time (UTC) in hours.
-    albedo (float): Albedo value for ground-reflected irradiance.
-    Returns:
-    float: Total solar irradiance on the tilted surface in W/m^2.
     """
     
     theta_tilt = rad(theta_tilt)  # Convert tilt to radians

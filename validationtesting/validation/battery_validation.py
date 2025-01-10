@@ -1,3 +1,7 @@
+"""
+This module is used to validate the battery model output.
+"""
+
 import streamlit as st
 import pandas as pd
 import logging
@@ -7,18 +11,22 @@ import numpy as np
 from blast import models
 
 def test_charging_rate(battery_power: float, max_charge_power: float, max_discharge_power: float) -> bool:
+    """Test if the battery power is within the charge and discharge power constraints."""
     return not (battery_power > max_discharge_power or (0 - battery_power) > max_charge_power)
 
 def test_soc(battery_capacity: float, current_energy_stored: float, min_soc: float, max_soc: float) -> tuple:
+    """Test if the battery state of charge is within the limits."""
     soc = current_energy_stored / battery_capacity
     is_within_limits = min_soc <= soc <= max_soc
     return soc, is_within_limits
 
 def temporal_degradation_capacity(battery_capacity: float, degradation_rate: float, date: datetime.date, installation_date: datetime.date) -> float:
+    """Calculate the battery capacity after temporal degradation."""
     years_since_install = (date - installation_date).days / 365.25
     return battery_capacity * (1 - degradation_rate * years_since_install)
 
 def get_cyclic_degradation(cell, soc_values) -> float:
+    """Calculate the battery state of health after cyclic degradation."""
     def prepare_input(soc_values):
         # Generate cumulative time in seconds (1 hour = 3600 seconds)
         time_seconds = np.array([i * 3600 for i in range(len(soc_values))], dtype=float)
@@ -43,6 +51,7 @@ def get_cyclic_degradation(cell, soc_values) -> float:
     return soh_end
 
 def battery_validation_testing() -> None:
+    """Run the battery validation testing."""
     logging.info('Running battery validation testing')
     project_name = st.session_state.get("project_name")
     battery_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"model_output_battery.csv"

@@ -1,94 +1,12 @@
+"""
+This module contains the Streamlit page for uploading the model's output data.
+"""
+
 import streamlit as st
 import pandas as pd
 from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface, time_format_timezone_selectors
-import datetime as dt
-import pytz
+from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface, time_format_timezone_selectors, load_csv_data, load_timeseries_csv_with_timezone
 import numpy as np
-
-
-
-def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str) -> pd.DataFrame:
-    """
-    Load CSV data with given delimiter and decimal options.
-    
-    Args:
-        uploaded_file: The uploaded CSV file.
-        delimiter (str): The delimiter used in the CSV file.
-        decimal (str): The decimal separator used in the CSV file.
-        resource_name (Optional[str]): The name of the resource (used for column naming).
-    
-    Returns:
-        Optional[pd.DataFrame]: The loaded DataFrame or None if an error occurred.
-    """
-    try:
-        uploaded_file.seek(0)
-        data = pd.read_csv(uploaded_file, delimiter=delimiter, decimal=decimal)
-        data = data.apply(pd.to_numeric, errors='coerce')
-        
-        if len(data.columns) > 1:
-            selected_column = st.selectbox(f"Select the column representing {parameter}", data.columns)
-            data = data[[selected_column]]
-        
-        data.index = range(1, len(data) + 1)
-        data.index.name = 'Periods'
-        
-        if data.empty:
-            st.warning("No data found in the CSV file. Please check delimiter and decimal settings.")
-        elif data.isnull().values.any():
-            st.warning("Some values could not be converted to numeric. Please check the data.")
-        
-        return data
-    except Exception as e:
-        st.error(f"Error during import of CSV data: {e}")
-        return None
-    
-# Function to load and process time series data with time zones and format handling
-def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: str, time_format: str, timezone: str) -> pd.Series:
-    """
-    Load CSV time-series data with given delimiter, decimal options, and convert the time column to UTC datetime.
-    
-    Args:
-        uploaded_file: The uploaded CSV file.
-        delimiter (str): The delimiter used in the CSV file.
-        decimal (str): The decimal separator used in the CSV file.
-        time_format (str): The format of the time column to parse datetime (e.g., '%Y-%m-%d %H:%M:%S').
-        timezone (str): The time zone of the data (e.g., 'Europe/Berlin').
-        parameter (str): The name of the data parameter (e.g., temperature or irradiation).
-    
-    Returns:
-        Optional[pd.DataFrame]: The loaded DataFrame with time in UTC or None if an error occurred.
-    """
-    try:
-        uploaded_file.seek(0)
-        data = pd.read_csv(uploaded_file, delimiter=delimiter, decimal=decimal)
-        
-        if data.empty:
-            st.warning("No data found in the CSV file. Please check the file.")
-            return None
-        
-        # Select the time column
-        time_column = st.selectbox(f"Select the column representing time:", data.columns)
-        
-        # Convert the time column to datetime using the provided format and time zone
-        try:
-            data[time_column] = pd.to_datetime(data[time_column], format=time_format, errors='coerce')
-        except ValueError as e:
-            st.error(f"Error in parsing time column: {e}")
-            return None
-
-        # Localize to the selected timezone and convert to UTC
-        local_tz = pytz.timezone(timezone)
-        time = data[time_column].apply(lambda x: local_tz.localize(x).astimezone(pytz.UTC))
-
-        if time.empty:
-            st.warning("No valid time series data found. Please check the format.")
-
-        return time
-    
-    except Exception as e:
-        st.error(f"Error during import of time from CSV: {e}")
-        return None
     
 def save_data(resource_data: pd.DataFrame, project_name: str, resource_name: str) -> None:
     """Save the resource data to a CSV file."""    
@@ -97,11 +15,14 @@ def save_data(resource_data: pd.DataFrame, project_name: str, resource_name: str
 
 
 def upload_model_output(resource) -> None:
-    """Streamlit page for configuring renewable energy technology parameters."""
+    """Streamlit page for uploading the model's output data."""
+    
     st.title(f"Upload the model's {resource} output")
     # Initialize session state variables
     initialize_session_state(st.session_state.default_values, 'upload_model_parameters')
     project_name = st.session_state.get("project_name")
+    
+    # Check if data has been uploaded and show it
     if st.session_state[f'{resource}_data_uploaded']:
         st.write("Data has been uploaded:")
         project_folder_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "inputs" / f"model_output_{resource}.csv"
@@ -120,21 +41,25 @@ def upload_model_output(resource) -> None:
         if st.button("Reupload Data"):
             st.session_state[f'{resource}_data_uploaded'] = False
 
+    # Upload interface
     else:
         if resource == "consumption":
             pass
         else:
+            # Select if data is for all units or per unit
             st.session_state[f'{resource}_model_output_scope'] = st.radio(f"Is the {resource} output defined per unit or in total?", ("Per Unit", "Total"))
 
         uploaded_file, delimiter, decimal = csv_upload_interface(f"energy_production_{resource}")
         if uploaded_file:
+            # Select Time column
             with st.expander(f"Time", expanded=False):
                 time_format, timezone = time_format_timezone_selectors()
                 time_data = load_timeseries_csv_with_timezone(uploaded_file, delimiter, decimal, time_format, timezone)
             with st.expander(f"Data", expanded=False):
                 data_dict = {}
-    
+
                 if st.session_state[f'{resource}_model_output_scope'] == "Total": 
+                    # Select Energy Production
                     col1, col2 = st.columns(2)
                     with col1:
                         energy_output_data = load_csv_data(uploaded_file, delimiter, decimal, f'Total {resource} Energy')
@@ -157,6 +82,7 @@ def upload_model_output(resource) -> None:
                             with col2:
                                     curtailment_data = load_csv_data(uploaded_file, delimiter, decimal, 'Model {resource} Used Energy Total [Wh]')
                                     data_dict[f'Model {resource} Used Energy Total [Wh]'] = curtailment_data.values.flatten() if curtailment_data is not None else None
+                    # Select Fuel Consumption
                     if resource == "generator":
                         col1, col2 = st.columns(2)
                         with col1:
@@ -176,6 +102,7 @@ def upload_model_output(resource) -> None:
                     total_used_energy_output = None
                     total_fuel_consumption = None
                     for unit in range(st.session_state[f'{resource}_num_units']):
+                        # Select Energy Production
                         col1, col2 = st.columns(2)
                         with col1:
                             energy_output_data = load_csv_data(uploaded_file, delimiter, decimal, f'Model {resource} Energy Unit {unit + 1} [Wh]')
@@ -196,6 +123,7 @@ def upload_model_output(resource) -> None:
                                 total_energy_output = energy_output_data.values.flatten()
                             else:
                                 total_energy_output = np.add(total_energy_output, energy_output_data.values.flatten())
+                        # Select Curtailment
                         if resource == "solar_pv" or resource == "wind":
                             st.session_state[f'{resource}_curtailment'][unit] = st.toggle("Curtailment", value=st.session_state[f'{resource}_curtailment'][unit])
                             if st.session_state[f'{resource}_curtailment'][unit]:
@@ -220,6 +148,7 @@ def upload_model_output(resource) -> None:
                                         total_used_energy_output = curtailment_data.values.flatten()
                                     else:
                                         total_used_energy_output = np.add(total_used_energy_output, curtailment_data.values.flatten())
+                        # Select Fuel Consumption
                         if resource == "generator":
                             col1, col2 = st.columns(2)
                             with col1:
@@ -271,7 +200,6 @@ def upload_model_output(resource) -> None:
 
             # Button to save the full DataFrame
             if st.button(f"Save Data for", key=f"save_solar_csv"):
-                # Store the combined data in session state
                 st.session_state[f'{resource}_data_uploaded'] = True  # Set the flag to True since data is now uploaded
                 save_data(data, project_name, resource)
                 st.rerun()
