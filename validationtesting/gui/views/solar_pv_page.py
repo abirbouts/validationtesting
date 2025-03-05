@@ -287,11 +287,9 @@ def solar_pv() -> None:
         col1, col2 = st.columns(2)
         with col1:
             st.session_state.pv_degradation = st.checkbox("Yearly PV degradation", value=st.session_state.pv_degradation)
-
+        with col2:
             st.session_state.pv_temperature_dependent_efficiency = st.checkbox("Temperature dependent PV efficiency", value=st.session_state.pv_temperature_dependent_efficiency)
 
-        with col2:
-            st.session_state.pv_dynamic_inverter_efficiency = st.checkbox("Dynamic inverter efficency", value=st.session_state.pv_dynamic_inverter_efficiency)
 
         st.session_state.pv_rho = st.number_input(
             f"Ground reflectance (rho) [%]:", 

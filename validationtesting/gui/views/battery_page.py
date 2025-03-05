@@ -349,36 +349,28 @@ def battery() -> None:
             index = options.index(st.session_state.battery_efficiency_type))
 
         # Let choose what was included in the calculations    
-        options = ['Temporal battery degradation', 'Cyclic battery degradation', 'Inverter efficiency included in the battery efficiency']
+        options = ['No Battery Degradation', 'Temporal Battery Degradation', 'Cyclic Battery Degradation']
 
-        if st.session_state.battery_inverter_eff_included:
-            options.append('Dynamic inverter efficiency')
-        options_selected = []
+        
         if st.session_state.battery_temporal_degradation:
-            options_selected.append('Temporal battery degradation')
-        if st.session_state.battery_cyclic_degradation:
-            options_selected.append('Cyclic battery degradation')
-        if st.session_state.battery_inverter_eff_included:
-            options_selected.append('Inverter efficiency included in the battery efficiency')
-        if st.session_state.battery_dynamic_inverter_efficiency:
-            options_selected.append('Dynamic inverter efficiency')
+            option_selected = 'Temporal Battery Degradation'
+        elif st.session_state.battery_cyclic_degradation:
+            option_selected = 'Cyclic Battery Degradation'
+        else:
+            option_selected = 'No Battery Degradation'
+    
 
         included = st.pills(
-            "Choose what was included in your calculations:", 
+            "Choose the Type of Battery Degradation:", 
             options=options,
-            default=options_selected,
-            selection_mode='multi')
+            default=option_selected,
+            selection_mode='single')
 
-        st.session_state.battery_temporal_degradation = 'Temporal battery degradation' in included
-        st.session_state.battery_cyclic_degradation = 'Cyclic battery degradation' in included
-        st.session_state.battery_inverter_eff_included = 'Inverter efficiency included in the battery efficiency' in included
-        if st.session_state.battery_inverter_eff_included:
-            st.session_state.battery_dynamic_inverter_efficiency = 'Dynamic inverter efficiency' in included
-        else:
-            st.session_state.battery_dynamic_inverter_efficiency = False
+        st.session_state.battery_temporal_degradation = included == 'Temporal Battery Degradation'
+        st.session_state.battery_cyclic_degradation = included == 'Cyclic Battery Degradation'
 
         if st.session_state.battery_temporal_degradation or st.session_state.battery_cyclic_degradation:
-            accounting_options = ['Capacity Degradation', 'Salvage Value']
+            accounting_options = ['Capacity Degradation', 'Replacement Cost']
             st.session_state.battery_degradation_accounting = st.selectbox(
                 'Degradation accounting:',
                 accounting_options,

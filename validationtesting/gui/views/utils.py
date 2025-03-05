@@ -272,7 +272,7 @@ def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str) -
         elif data.isnull().values.any():
             st.warning("Some values could not be converted to numeric. Please check the data.")
         else:
-            st.success(f"Data loaded successfully using delimiter '{delimiter}' and decimal '{decimal}'")
+            st.success(f"Data loaded successfully.")
         
         return data
     except Exception as e:
@@ -292,7 +292,7 @@ def load_timeseries_csv(uploaded_file, delimiter: str, decimal: str, time_format
         parameter (str): The name of the data parameter (e.g., temperature or irradiation).
     
     Returns:
-        Optional[pd.DataFrame]: The loaded DataFrame with time in UTC or None if an error occurred.
+        Optional[pd.DataFrame]: The loaded DataFrame with time or None if an error occurred.
     """
     try:
         uploaded_file.seek(0)
@@ -317,7 +317,7 @@ def load_timeseries_csv(uploaded_file, delimiter: str, decimal: str, time_format
         if time.empty:
             st.warning("No valid time series data found. Please check the CSV file.")
         else:
-            st.success(f"Time loaded successfully for Time and converted to UTC.")
+            st.success(f"Time loaded successfully.")
 
         return time
     

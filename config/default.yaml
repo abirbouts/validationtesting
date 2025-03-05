@@ -36,8 +36,6 @@ solar_pv_parameters:
     pv_T_ref_NOCT: [20.0, 20.0, 20.0, 20.0]
     pv_NOCT: [45.0, 45.0, 45.0, 45.0]
     pv_I_ref_NOCT: [800.0, 800.0, 800.0, 800.0]
-    pv_dynamic_inverter_efficiency: false
-    pv_inverter_efficiency: [100.0, 100.0, 100.0, 100.0]
     solar_pv_investment_cost: [0.0, 0.0, 0.0, 0.0]
     solar_pv_exclude_investment_cost: [False, False, False, False]
     solar_pv_maintenance_cost: [0.0, 0.0, 0.0, 0.0]
@@ -45,15 +43,10 @@ solar_pv_parameters:
     solar_pv_curtailment: [true, true, true, true]
     
 solar_irradiation_parameters:
-    solar_irradiation_selected_input_type: "GHI & DHI"
     solar_irradiation_delimiter: "Comma (,)"
     solar_irradiation_decimal: "Dot (.)"
     solar_irradiation_time_format: "%d/%m/%Y %H:%M"
     irradiation_data_uploaded: false
-    Input_GHI: false
-    Input_DHI: false
-    Input_DNI: false
-    Input_G_total: false
     solar_irradiation_data_source: "Download from PVGIS"
     albedo: false
     albedo_coefficient: 20.0
@@ -68,7 +61,6 @@ battery_parameters:
     battery_type: ['Type 1', 'Type 2', 'Type 3', 'Type 4']
     battery_temporal_degradation: false
     battery_cyclic_degradation: true
-    battery_dynamic_inverter_efficiency: false
     battery_capacity: [5000.0]
     battery_lifetime: [20]
     battery_charging_efficiency: [90.0, 90.0, 90.0, 90.0]
@@ -81,9 +73,7 @@ battery_parameters:
     battery_max_discharge_power: [500.0]
     battery_min_charge_time: [5]
     battery_min_discharge_time: [4]
-    battery_inverter_efficiency: [100.0]
     battery_efficiency_type: 'Seperate Charging and Discharging Efficiency'
-    battery_inverter_eff_included: [true, true, true, true]
     battery_temporal_degradation_rate: [2.0, 2.0, 2.0, 2.0]
     battery_investment_cost: [0.0, 0.0, 0.0, 0.0]
     battery_exclude_investment_cost: [False, False, False, False]
@@ -91,7 +81,7 @@ battery_parameters:
     battery_end_of_project_cost: [0.0, 0.0, 0.0, 0.0]
     battery_chemistry: ['LFP - Lithium Iron Phosphate (LFP)']
     battery_model: ['Lfp_Gr_250AhPrismatic']
-    battery_degradation_accounting: "Salvage Value"
+    battery_degradation_accounting: "Replacement Cost"
 
 wind_parameters:
     wind_num_units: 4
@@ -134,7 +124,6 @@ generator_parameters:
     generator_same_type: false
     generator_dynamic_efficiency: false
     generator_temporal_degradation: false
-    generator_cyclic_degradation: false
     generator_efficiency: [30.0, 30.0, 30.0, 30.0]
     generator_lifetime: [20, 20, 20, 20]
     generator_min_power: [0.0, 0.0, 0.0, 0.0]
@@ -166,17 +155,11 @@ conversion_parameters:
 
 upload_model_parameters:
     solar_pv_data_uploaded: false
-    solar_pv_model_output_scope: "Total"
     battery_data_uploaded: false
-    battery_model_output_scope: "Total"
     wind_data_uploaded: false
-    wind_model_output_scope: "Total"
     generator_data_uploaded: false
-    generator_model_output_scope: "Total"
     wind_data_uploaded: false
-    wind_model_output_scope: "Total"
     consumption_data_uploaded: false
-    consumption_model_output_scope: "Total"
 
 general_info:
   start_date: "2021-12-31 22:00:00"

@@ -7,7 +7,6 @@ The energy output is then saved to a CSV file.
 
 import streamlit as st
 import pandas as pd
-import logging
 from config.path_manager import PathManager
 import datetime
 import math
@@ -252,6 +251,6 @@ def wind_benchmark() -> None:
     wind_text.write("Saving Wind Benchmark Results")
     results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "wind_validation.csv"
     results.to_csv(results_data_path, index=False)
-    wind_text.write("Wind Benchmark Optimization Completed")
+    wind_text.write("Wind Benchmark Optimization Completed.")
     wind_progress += progress_step
     wind_progress_bar.progress(wind_progress)

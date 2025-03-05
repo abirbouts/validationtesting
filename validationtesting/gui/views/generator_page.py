@@ -282,18 +282,9 @@ def generator() -> None:
 
         col1, col2 = st.columns(2)
         with col1:
-            st.session_state.generator_dynamic_efficiency = st.checkbox(
-                "Dynamic inverter efficency", 
-                value = st.session_state.generator_dynamic_efficiency)
-
             st.session_state.generator_temporal_degradation = st.checkbox(
                 "Temporal generator degradation",
                 value = st.session_state.generator_temporal_degradation)
-
-        with col2:
-            st.session_state.generator_cyclic_degradation = st.checkbox(
-                "Cyclic generator degradation", 
-                value = st.session_state.generator_cyclic_degradation)
             
     if st.session_state.economic_validation:
         # generator fuel price

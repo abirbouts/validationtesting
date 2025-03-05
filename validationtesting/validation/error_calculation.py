@@ -9,7 +9,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from config.path_manager import PathManager
-import logging
 import os
 
 class ERROR():
@@ -37,65 +36,6 @@ class ERROR():
         for component_name in components:
             component = st.session_state.get(component_name)
             if component:
-                if st.session_state[f'{component_name}_model_output_scope'] == "Per Unit":
-                    for i in range (st.session_state[f'{component_name}_num_units']):
-                        columns_to_keep = ['Time', f'Model {component_name} Energy Unit {i+1} [Wh]', f'Benchmark {component_name} Energy Unit {i+1} [Wh]']
-                        temp_df = combined_df[columns_to_keep]
-                        temp_df = temp_df.set_index('Time')
-                        temp_df = temp_df.rename(columns={ f'Model {component_name} Energy Unit {i+1} [Wh]': 'model_output', f'Benchmark {component_name} Energy Unit {i+1} [Wh]': 'benchmark_output'})
-                        total_mae, yearly_mae, monthly_mae, hourly_mae = self.mae(temp_df)
-                        total_rmse, yearly_rmse, monthly_rmse, hourly_rmse = self.rmse(temp_df)
-                        
-                        benchmark_mean = temp_df['benchmark_output'].mean()
-                        yearly_benchmark_series = temp_df.groupby(temp_df.index.year)['benchmark_output'].mean()
-                        yearly_benchmark_mean = {str(year): mean for year, mean in yearly_benchmark_series.items()}
-                        monthly_benchmark_series = temp_df.groupby(temp_df.index.month)['benchmark_output'].mean()
-                        monthly_benchmark_mean = {pd.to_datetime(month, format='%m').strftime('%B'): mean for month, mean in monthly_benchmark_series.items()}
-                        hourly_benchmark_series = temp_df.groupby(temp_df.index.hour)['benchmark_output'].mean()
-                        hourly_benchmark_mean = {f"{hour:02d}:00": mean for hour, mean in hourly_benchmark_series.items()}
-                        benchmark_data["yearly"][f"Year"] = list(yearly_benchmark_mean.keys()) 
-                        benchmark_data["monthly"][f"Month"] = list(monthly_benchmark_mean.keys())
-                        benchmark_data["hourly"][f"Hour"] = list(hourly_benchmark_mean.keys())
-                        benchmark_data["total"][f"Mean Benchmark Unit {i + 1}"] = [benchmark_mean]
-                        benchmark_data["yearly"][f"Mean Benchmark Unit {i + 1}"] = list(yearly_benchmark_mean.values())
-                        benchmark_data["monthly"][f"Mean Benchmark Unit {i + 1}"] = list(monthly_benchmark_mean.values())
-                        benchmark_data["hourly"][f"Mean Benchmark Unit {i + 1}"] = list(hourly_benchmark_mean.values())
-
-
-                        model_mean = temp_df['model_output'].mean()
-                        yearly_model_series = temp_df.groupby(temp_df.index.year)['model_output'].mean()
-                        yearly_model_mean = {str(year): mean for year, mean in yearly_model_series.items()}
-                        monthly_model_series = temp_df.groupby(temp_df.index.month)['model_output'].mean()
-                        monthly_model_mean = {pd.to_datetime(month, format='%m').strftime('%B'): mean for month, mean in monthly_model_series.items()}
-                        hourly_model_series = temp_df.groupby(temp_df.index.hour)['model_output'].mean()
-                        hourly_model_mean = {str(hour): mean for hour, mean in hourly_model_series.items()}
-                        model_data["yearly"][f"Year"] = list(yearly_model_mean.keys()) 
-                        model_data["monthly"][f"Month"] = list(monthly_model_mean.keys())
-                        model_data["hourly"][f"Hour"] = list(hourly_model_mean.keys())
-                        model_data["total"][f"Mean Model Unit {i + 1}"] = [model_mean]
-                        model_data["yearly"][f"Mean Model Unit {i + 1}"] = list(yearly_model_mean.values())
-                        model_data["monthly"][f"Mean Model Unit {i + 1}"] = list(monthly_model_mean.values())
-                        model_data["hourly"][f"Mean Model Unit {i + 1}"] = list(hourly_model_mean.values())
-                        
-                        mae_data["yearly"][f"Year"] = list(yearly_mae.keys()) 
-                        mae_data["monthly"][f"Month"] = list(monthly_mae.keys())
-                        mae_data["hourly"][f"Hour"] = list(hourly_mae.keys())
-
-                        mae_data["total"][f"MAE Unit {i + 1}"] = [total_mae["Total MAE"]]
-                        mae_data["yearly"][f"MAE Unit {i + 1}"] = list(yearly_mae.values())
-                        mae_data["monthly"][f"MAE Unit {i + 1}"] = list(monthly_mae.values())
-                        mae_data["hourly"][f"MAE Unit {i + 1}"] = list(hourly_mae.values())
-
-                        rmse_data["yearly"][f"Year"] = list(yearly_rmse.keys()) 
-                        rmse_data["monthly"][f"Month"] = list(monthly_rmse.keys())
-                        rmse_data["hourly"][f"Hour"] = list(hourly_rmse.keys())
-
-                        rmse_data["total"][f"RMSE Unit {i + 1}"] = [total_rmse["Total RMSE"]]
-                        rmse_data["yearly"][f"RMSE Unit {i + 1}"] = list(yearly_rmse.values())
-                        rmse_data["monthly"][f"RMSE Unit {i + 1}"] = list(monthly_rmse.values())
-                        rmse_data["hourly"][f"RMSE Unit {i + 1}"] = list(hourly_rmse.values())
-
-                
                 columns_to_keep = ['Time', f'Model {component_name} Energy Total [Wh]', f'Benchmark {component_name} Energy Total [Wh]']
                 temp_df = combined_df[columns_to_keep]
                 temp_df = temp_df.set_index('Time')
@@ -157,7 +97,6 @@ class ERROR():
                 self.save_as_csv(rmse_data, "RMSE", component_name)
 
                 results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results"
-                logging.info(f'The errors for {component_name} on a yearly, monthly and hourly base are saved in {results_data_path}')
 
     def save_as_csv(self, data: dict, metric_name: str, component_name: str) -> None:
         results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results"

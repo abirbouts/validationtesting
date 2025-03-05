@@ -93,7 +93,6 @@ def fill_pv_table(start_date, end_date, installation_dates, pv_lifetime, yearly_
                     energy *= (1 - (pv_degradation_rate / 100) * years_since_install)
             results.at[date, f"Benchmark solar_pv Energy Unit {unit + 1} [Wh]"] = energy
             results.at[date, "Benchmark solar_pv Energy Total [Wh]"] += energy
-    st.write(results['Benchmark solar_pv Energy Total [Wh]'])
     results.reset_index(inplace=True)
     results.rename(columns={'index': 'Time'}, inplace=True)
     return results

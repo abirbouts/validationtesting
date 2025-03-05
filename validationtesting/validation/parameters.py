@@ -122,8 +122,6 @@ class SolarPV(BaseModel):
     pv_T_ref_NOCT: list
     pv_NOCT: list
     pv_I_ref_NOCT: list
-    pv_dynamic_inverter_efficiency: bool
-    pv_inverter_efficiency: list
     solar_pv_investment_cost: list
     solar_pv_exclude_investment_cost: list
     solar_pv_maintenance_cost: list
@@ -173,7 +171,6 @@ class Battery(BaseModel):
     battery_type: list
     battery_temporal_degradation: bool
     battery_cyclic_degradation: bool
-    battery_dynamic_inverter_efficiency: bool
     battery_capacity: list
     battery_lifetime: list
     battery_charging_efficiency: list
@@ -186,9 +183,7 @@ class Battery(BaseModel):
     battery_max_discharge_power: list
     battery_min_discharge_time: list
     battery_min_charge_time: list
-    battery_inverter_efficiency: list
     battery_efficiency_type: str
-    battery_inverter_eff_included: list
     battery_temporal_degradation_rate: list
     battery_investment_cost: list
     battery_exclude_investment_cost: list
@@ -222,10 +217,6 @@ class SolarIrradiation(BaseModel):
     solar_irradiation_decimal: str
     solar_irradiation_time_format: str
     irradiation_data_uploaded: bool
-    Input_GHI: bool
-    Input_DHI: bool
-    Input_DNI: bool
-    Input_G_total: bool
     solar_irradiation_data_source: str
     albedo: bool
     albedo_coefficient: float
@@ -328,7 +319,6 @@ class Generator(BaseModel):
     generator_same_type: bool
     generator_dynamic_efficiency: bool
     generator_temporal_degradation: bool
-    generator_cyclic_degradation: bool
     generator_efficiency: list
     generator_lifetime: list
     generator_min_power: list
@@ -364,17 +354,11 @@ class UploadModelOutput(BaseModel):
     """
     model_config = ConfigDict(arbitrary_types_allowed=True)
     solar_pv_data_uploaded: bool
-    solar_pv_model_output_scope: str # "Per Unit", "Total"
     battery_data_uploaded: bool
-    battery_model_output_scope: str # "Per Unit", "Total"
     wind_data_uploaded: bool
-    wind_model_output_scope: str # "Per Unit", "Total"
     generator_data_uploaded: bool
-    generator_model_output_scope: str # "Per Unit", "Total"
     wind_data_uploaded: bool
-    wind_model_output_scope: str # "Per Unit", "Total"
     consumption_data_uploaded: bool
-    consumption_model_output_scope: str
 
 class GeneratePlots(BaseModel):
     """

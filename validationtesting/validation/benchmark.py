@@ -6,8 +6,6 @@ It uses the solar_pv_benchmark and wind_benchmark to calculate the benchmark and
 import streamlit as st
 import pandas as pd
 from config.path_manager import PathManager
-import logging
-
 from validationtesting.validation.solar_pv_validation import solar_pv_benchmark
 from validationtesting.validation.wind_validation import wind_benchmark
 
@@ -15,8 +13,6 @@ class Benchmark():
     """Class to calculate the benchmark of the model output"""
     def __init__(self,component_text, progress_bar, progress_step, progress) -> None:
         """Initialize the Benchmark class, run functions to calculate the benchmark and save the combined benchmark"""
-        self.logger = logging.getLogger('Benchmark')
-        self.logger.info("Starting Benchmark calculation...")
         self.project_name = st.session_state.get("project_name")
         components = {
             "solar_pv": solar_pv_benchmark,
@@ -42,7 +38,6 @@ class Benchmark():
                 progress_bar.progress(progress)
         combined_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results" / f"combined_model_benchmark.csv"
         combined_df.to_csv(combined_data_path, index=False)
-        self.logger.info(f"Combined Benchmark saved in {combined_data_path}")
 
     def create_df(self, resource: str) -> pd.DataFrame:
         """Create a dataframe of the model and benchmark data for one resource"""

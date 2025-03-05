@@ -117,12 +117,16 @@ def run_model() -> None:
                 # Run technical validation for all components
                 if st.session_state.solar_pv or st.session_state.wind:
                     Benchmark(component_text, progress_bar, progress_step, progress)
+                    if st.session_state.solar_pv:
+                        progress += progress_step
+                    if st.session_state.wind:
+                        progress += progress_step
                     ERROR()
                 if st.session_state.battery:
                     component_text.text("Battery")
                     battery_validation_testing()
                     progress += progress_step
-                    progress_bar.progress(progress) 
+                    progress_bar.progress(progress)
                 if st.session_state.generator:
                     component_text.text("Generator")
                     generator_validation_testing()
@@ -132,12 +136,14 @@ def run_model() -> None:
                     component_text.text("Conversion Losses")
                     conversion_losses_validation()
                     progress += progress_step
-                    progress_bar.progress(progress) 
+                    progress_bar.progress(progress)
+                
                 if st.session_state.energy_balance:
                     component_text.text("Energy Balance")
                     energy_balance_validation()
                     progress += progress_step
                     progress_bar.progress(progress)
+                progress_bar.progress(1)
                 end_time = datetime.now()
                 calculation_time = end_time - start_time
                 st.success(f"Technical Validation Complete, Calculation Time = {calculation_time.total_seconds()} seconds")

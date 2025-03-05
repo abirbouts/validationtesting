@@ -51,10 +51,7 @@ def power_constraints_details(df) -> None:
     """
     Display the timestamps where the power constraints are violated.
     """
-    if st.session_state.generator_model_output_scope == "Per Unit":
-        flagged_df = df[(df[[f"Power Constraints Unit {unit+1}" for unit in range(st.session_state.generator_num_units)]] == False).any(axis=1)]
-    else:
-        flagged_df = df[df[f"Power Constraints Total"] == False]
+    flagged_df = df[df[f"Power Constraints Total"] == False]
 
     st.write(flagged_df)
 
@@ -71,10 +68,7 @@ def charge_power_constraints_details(df) -> None:
     """
     Display the timestamps where the charge power constraints are violated.
     """
-    if st.session_state.battery_model_output_scope == "Per Unit":
-        flagged_df = df[(df[[f"Charge Power Constraints Unit {unit+1}" for unit in range(st.session_state.battery_num_units)]] == False).any(axis=1)]
-    else:
-        flagged_df = df[df[f"Charge Power Constraints Total"] == False]
+    flagged_df = df[df[f"Charge Power Constraints Total"] == False]
     st.write(flagged_df)
 
 @st.dialog("All Timestamps, where the state of charge constraints are violated")
@@ -82,10 +76,7 @@ def soc_constraints_details(df) -> None:
     """
     Display the timestamps where the state of charge constraints are violated.
     """
-    if st.session_state.battery_model_output_scope == "Per Unit":
-        flagged_df = df[(df[[f"SoC Constraints Unit {unit+1}" for unit in range(st.session_state.battery_num_units)]] == False).any(axis=1)]
-    else:
-        flagged_df = df[df[f"SoC Constraints Total"] == False]
+    flagged_df = df[df[f"SoC Constraints Total"] == False]
     st.write(flagged_df)
 
 def add_lcoe_metric(component: str) -> None:
@@ -158,12 +149,7 @@ def power_constraints_metric() -> None:
     # Define file paths
     data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"generator_validation.csv"
     df = pd.read_csv(data_path)
-    count = 0
-    if st.session_state.generator_model_output_scope == "Per Unit":
-        for unit in range(st.session_state.generator_num_units):
-            count += (df[f"Power Constraints Unit {unit+1}"] == False).sum()
-    else:
-        count = (df["Power Constraints Total"] == False).sum()
+    count = (df["Power Constraints Total"] == False).sum()
     st.metric(label="Power out of boundary:", value=count)
     if st.button(f"View details", key=f"generator_power_constraints_details"):
         power_constraints_details(df)
@@ -179,15 +165,8 @@ def fuel_consumption_metric() -> None:
     # Define file paths
     data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"generator_validation.csv"
     df = pd.read_csv(data_path)
-    fuel_consumption_model = 0
-    fuel_consumption_benchmark = 0
-    if st.session_state.generator_model_output_scope == "Per Unit":
-        for unit in range(st.session_state.generator_num_units):
-            fuel_consumption_model += st.session_state.generator_total_fuel_consumption[unit]
-            fuel_consumption_benchmark += df[f"Benchmark Fuel Consumption generator Unit {unit+1} [l]"].sum()
-    else:
-        fuel_consumption_model = st.session_state.generator_total_fuel_consumption[0]
-        fuel_consumption_benchmark = df["Benchmark Fuel Consumption generator Total [l]"].sum()
+    fuel_consumption_model = st.session_state.generator_total_fuel_consumption[0]
+    fuel_consumption_benchmark = df["Benchmark Fuel Consumption generator Total [l]"].sum()
     percentage_difference = round((abs(fuel_consumption_model - fuel_consumption_benchmark) / fuel_consumption_benchmark)/100, 3)
     st.metric(label="Fuel Consumption Difference:", value=str(percentage_difference) + "%")
     if st.button(f"View details", key=f"generator_fuel_consumption_details"):
@@ -205,11 +184,7 @@ def charge_power_constraints_metric() -> None:
     data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"battery_validation.csv"
     df = pd.read_csv(data_path)
     count = 0
-    if st.session_state.battery_model_output_scope == "Per Unit":
-        for unit in range(st.session_state.generator_num_units):
-            count += (df[f"Charge Power Constraints Unit {unit+1}"] == False).sum()
-    else:
-        count = (df["Charge Power Constraints Total"] == False).sum()
+    count = (df["Charge Power Constraints Total"] == False).sum()
     st.metric(label="Charge power out of boundary:", value=count)
     if st.button(f"View details", key=f"charge_power_constraints_details"):
         charge_power_constraints_details(df)
@@ -225,17 +200,11 @@ def soc_constraints_metric() -> None:
     # Define file paths
     data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"battery_validation.csv"
     df = pd.read_csv(data_path)
-    count = 0
-    if st.session_state.battery_model_output_scope == "Per Unit":
-        for unit in range(st.session_state.generator_num_units):
-            count += (df[f"SoC Constraints Unit {unit+1}"] == False).sum()
-    else:
-        count = (df["SoC Constraints Total"] == False).sum()
+    count = (df["SoC Constraints Total"] == False).sum()
     st.metric(label="State of Charge out of boundary:", value=count)
     if st.button(f"View details", key=f"soc_constraints_details"):
         soc_constraints_details(df)
     return
-
 def plot_model_vs_benchmark(component: str) -> None:
     """
     Generate plot to compare the model and benchmark output for a given component.
@@ -553,12 +522,9 @@ def results() -> None:
                     energy_balance_plot()
                 for component in used_components:
                     if component == "Solar PV":
-                        function_name = f"solar_pv_generate_plots"
-                    else:
-                        function_name = f"{component.lower()}_generate_plots"
-                    print(f'st.session_state.default_values={st.session_state.default_values}')
-                    plot_function = getattr(sys.modules[__name__], function_name, None)
-                    plot_function()
+                        solar_pv_generate_plots()
+                    elif component == "Wind":
+                        wind_generate_plots()
                 st.session_state.plots_generated = True
 
         if results_component == "Energy Balance":
