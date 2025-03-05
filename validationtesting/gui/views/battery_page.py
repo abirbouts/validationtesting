@@ -4,7 +4,7 @@ The user can specify the specifications for the batteries.
 """
 
 import streamlit as st
-from validationtesting.gui.views.utils import initialize_session_state, timezone_selector, convert_dates_to_utc, combine_date_and_time
+from validationtesting.gui.views.utils import initialize_session_state, combine_date_and_time
 import datetime as dt
 import numpy as np
 
@@ -71,22 +71,29 @@ def enter_specifications(i: int) -> None:
         )
         
         # Battery Maximum Charging and Discharging Power
-        if len(st.session_state.battery_max_charge_power) < st.session_state.num_battery_types:
-            st.session_state.battery_max_charge_power = [0.0] * st.session_state.num_battery_types
-        st.session_state.battery_max_charge_power[i] = st.number_input(
-            f"Maximum Charging Power [W]:", 
+        if len(st.session_state.battery_min_charge_time) < st.session_state.num_battery_types:
+            st.session_state.battery_min_charge_time = [0.0] * st.session_state.num_battery_types
+        st.session_state.battery_min_charge_time[i] = st.number_input(
+            f"Minimum Charging Time [h]:", 
             min_value=0.0, 
-            value=st.session_state.battery_max_charge_power[i],
-            key=f"battery_max_charge_power_{i}"
+            value=st.session_state.battery_min_charge_time[i],
+            key=f"battery_min_charge_time_{i}"
+        )
+        if len(st.session_state.battery_max_charge_power) != st.session_state.num_battery_types:
+            st.session_state.battery_max_charge_power.extend([0.0] * (st.session_state.num_battery_types - len(st.session_state.battery_max_charge_power)))
+        st.session_state.battery_max_charge_power[i] = st.session_state.battery_capacity[i] / st.session_state.battery_min_charge_time[i]
+
+        if len(st.session_state.battery_min_discharge_time) != st.session_state.num_battery_types:
+            st.session_state.battery_min_discharge_time = [0.0] * st.session_state.num_battery_types
+        st.session_state.battery_min_discharge_time[i] = st.number_input(
+            f"Minimum Discharging Time [h]:", 
+            min_value=0.0, 
+            value=st.session_state.battery_min_discharge_time[i],
+            key=f"battery_min_discharge_time_{i}"
         )
         if len(st.session_state.battery_max_discharge_power) != st.session_state.num_battery_types:
-            st.session_state.battery_max_discharge_power = [0.0] * st.session_state.num_battery_types
-        st.session_state.battery_max_discharge_power[i] = st.number_input(
-            f"Maximum Discharging Power [W]:", 
-            min_value=0.0, 
-            value=st.session_state.battery_max_discharge_power[i],
-            key=f"battery_max_discharge_power_{i}"
-        )
+            st.session_state.battery_max_discharge_power.extend([0.0] * (st.session_state.num_battery_types - len(st.session_state.battery_max_discharge_power)))
+        st.session_state.battery_max_discharge_power[i] = st.session_state.battery_capacity[i] / st.session_state.battery_min_discharge_time[i]
 
         # Battery Efficiency (either Seperate Charging and Discharging Efficiency or Roundtrip Efficiency)
         if st.session_state.battery_efficiency_type == 'Seperate Charging and Discharging Efficiency':
@@ -147,6 +154,10 @@ def enter_specifications(i: int) -> None:
 
         # Battery Cyclic Degradation Rate (if needed)
         if st.session_state.battery_cyclic_degradation:
+            if len(st.session_state.battery_chemistry) != st.session_state.num_battery_types:
+                st.session_state.battery_chemistry = ['LFP - Lithium Iron Phosphate (LFP)'] * st.session_state.num_battery_types
+            if len(st.session_state.battery_model) != st.session_state.num_battery_types:
+                st.session_state.battery_model = ['Lfp_Gr_SonyMurata3Ah_Battery'] * st.session_state.num_battery_types
             st.session_state.battery_chemistry[i] = st.selectbox(
                 "Battery Chemistry:",
                 ['LFP - Lithium Iron Phosphate (LFP)', 'NCA- Lithium Nickel Cobalt Aluminum Oxide', 'LMO -Lithium Manganese Oxide', 'NMC (Lithium Nickel Manganese Cobalt Oxide)'],
@@ -182,23 +193,41 @@ def enter_specifications(i: int) -> None:
     
     if st.session_state.economic_validation:
         # Battery Investment Cost
-        if len(st.session_state.battery_investment_cost) != st.session_state.num_battery_types:
-            st.session_state.battery_investment_cost = [0.0] * st.session_state.num_battery_types
-        st.session_state.battery_investment_cost[i] = st.number_input(
-            f"Investment Cost [USD]:", 
-            min_value=0.0, 
-            value=st.session_state.battery_investment_cost[i],
-            key=f"battery_investment_cost_{i}"
-        )
+        col1, col2 = st.columns(2)
+        with col1:
+            if len(st.session_state.battery_investment_cost) != st.session_state.num_battery_types:
+                st.session_state.battery_investment_cost = [0.0] * st.session_state.num_battery_types
+            st.session_state.battery_investment_cost[i] = st.number_input(
+                f"Investment Cost [USD/Wh]:", 
+                min_value=0.0, 
+                value=st.session_state.battery_investment_cost[i],
+                key=f"battery_investment_cost_{i}"
+            )
+        with col2:
+            if len(st.session_state.battery_exclude_investment_cost) != st.session_state.num_battery_types:
+                st.session_state.battery_exclude_investment_cost = [False] * st.session_state.num_battery_types
+            st.session_state.battery_exclude_investment_cost[i] = st.checkbox(
+                "Exclude Investment Cost", 
+                value = st.session_state.battery_exclude_investment_cost[i])
 
         # Battery Yearly Operation and Maintenance Cost
         if len(st.session_state.battery_maintenance_cost) != st.session_state.num_battery_types:
             st.session_state.battery_maintenance_cost = [0.0] * st.session_state.num_battery_types
         st.session_state.battery_maintenance_cost[i] = st.number_input(
-            f"Yearly Operation and Maintenance Cost [USD/year]:", 
+            f"Yearly Operation and Maintenance Cost [% of investment cost per year]:", 
             min_value=0.0, 
             value=st.session_state.battery_maintenance_cost[i],
             key=f"battery_maintenance_cost_{i}"
+        )
+
+        # End of Project Cost
+        if len(st.session_state.battery_end_of_project_cost) != st.session_state.num_battery_types:
+            st.session_state.battery_end_of_project_cost = [0.0] * st.session_state.num_battery_types
+        st.session_state.battery_end_of_project_cost[i] = st.number_input(
+            f"End of Project Cost [USD/Wh]:", 
+            min_value=0.0, 
+            value=st.session_state.battery_end_of_project_cost[i],
+            key=f"battery_end_of_project_cost_{i}"
         )
 
     if st.button("Close"):
@@ -223,7 +252,6 @@ def battery() -> None:
         st.session_state.battery_installation_dates = [dt.datetime.now() for _ in range(st.session_state.battery_num_units)]
     # Installation dates selection
     with st.expander(f"Installation Dates", expanded=False):
-        st.session_state.selected_timezone_battery = timezone_selector()
         if st.session_state.battery_num_units > 1:
             # Checkbox to determine if the installation date is the same for all units
             st.session_state.battery_same_date = st.checkbox("Same installation date for all units", 
@@ -234,59 +262,38 @@ def battery() -> None:
                 if 'installation_dates' not in st.session_state or len(st.session_state.battery_installation_dates) != st.session_state.battery_num_units:
                     today_midnight = dt.datetime.combine(dt.date.today(), dt.time.min)
                     st.session_state.battery_installation_dates = [today_midnight for _ in range(st.session_state.battery_num_units)]
-                col1, col2 = st.columns(2)
-                with col1:
                     same_installation_date = st.date_input(
                         "Installation Date",
                         value=st.session_state.battery_installation_dates[0].date() if st.session_state.battery_installation_dates[0] else dt.datetime.now().date()
                     )
-                with col2:
-                    same_installation_time = st.time_input(
-                        "Installation Time",
-                        value=st.session_state.battery_installation_dates[0].time() if st.session_state.installation_dates[0] else dt.time.min
-                    )
+
                 # Combine date and time
-                same_installation_datetime = combine_date_and_time(same_installation_date, same_installation_time)
+                same_installation_datetime = combine_date_and_time(same_installation_date)
                 # Set the same datetime for all units
                 for i in range(st.session_state.battery_num_units):
                     st.session_state.battery_installation_dates[i] = same_installation_datetime
             else:
                 # Multiple date inputs for each unit                
                 for i in range(st.session_state.battery_num_units):
-                # Create a date and time input for each unit
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        input_date = st.date_input(
-                            f"Installation Date for Unit {i + 1}",
-                            value=st.session_state.battery_installation_dates[i].date() if st.session_state.battery_installation_dates else dt.datetime.now().date(),
-                            key=f"date_input_{i}"
-                        )
-                    with col2:
-                        input_time = st.time_input(
-                            f"Installation Time for Unit {i + 1}",
-                            value=st.session_state.battery_installation_dates[i].time() if st.session_state.battery_installation_dates else dt.time.min,
-                            key=f"time_input_{i}"
-                        )
+                # Create a date input for each unit
+                    input_date = st.date_input(
+                        f"Installation Date for Unit {i + 1}",
+                        value=st.session_state.battery_installation_dates[i].date() if st.session_state.battery_installation_dates else dt.datetime.now().date(),
+                        key=f"date_input_{i}"
+                    )
+
                     # Combine date and time into a datetime object
-                    st.session_state.battery_installation_dates[i] = combine_date_and_time(input_date, input_time)
+                    st.session_state.battery_installation_dates[i] = combine_date_and_time(input_date)
         else:
             # Single date input for one unit
             st.write("Enter the installation date for the unit:")
-            col1, col2 = st.columns(2)
-            with col1:
-                input_date = st.date_input(
-                    "Installation Date",
-                    value=st.session_state.battery_installation_dates[0].date() if st.session_state.battery_installation_dates else dt.datetime.combine(dt.date.today(), dt.time.min)
-                )
-            with col2:
-                input_time = st.time_input(
-                    "Installation Time",
-                    value=st.session_state.battery_installation_dates[0].time() if st.session_state.battery_installation_dates else dt.time.min
-                )
+            input_date = st.date_input(
+                "Installation Date",
+                value=st.session_state.battery_installation_dates[0].date() if st.session_state.battery_installation_dates else dt.datetime.combine(dt.date.today(), dt.time.min)
+            )
+
             # Combine date and time into a datetime object
-            st.session_state.battery_installation_dates[0] = combine_date_and_time(input_date, input_time)
-        # Convert installation dates to UTC
-        st.session_state.battery_installation_dates_utc = convert_dates_to_utc(st.session_state.battery_installation_dates, st.session_state.selected_timezone_battery)
+            st.session_state.battery_installation_dates[0] = combine_date_and_time(input_date)
 
     # Battery types selection
     if len(st.session_state.battery_type) != st.session_state.battery_num_units:
@@ -355,7 +362,7 @@ def battery() -> None:
             options_selected.append('Inverter efficiency included in the battery efficiency')
         if st.session_state.battery_dynamic_inverter_efficiency:
             options_selected.append('Dynamic inverter efficiency')
-        
+
         included = st.pills(
             "Choose what was included in your calculations:", 
             options=options,
@@ -370,7 +377,13 @@ def battery() -> None:
         else:
             st.session_state.battery_dynamic_inverter_efficiency = False
 
-
+        if st.session_state.battery_temporal_degradation or st.session_state.battery_cyclic_degradation:
+            accounting_options = ['Capacity Degradation', 'Salvage Value']
+            st.session_state.battery_degradation_accounting = st.selectbox(
+                'Degradation accounting:',
+                accounting_options,
+                index = accounting_options.index(st.session_state.battery_degradation_accounting))
+            
     # Display the input fields for each battery type
     st.write("Enter Battery parameters:")
     col1, col2 = st.columns(2)

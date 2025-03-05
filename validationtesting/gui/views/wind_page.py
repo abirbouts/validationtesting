@@ -5,7 +5,7 @@ The user can specify the specifications for the wind energy.
 
 import streamlit as st
 from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface, timezone_selector, convert_dates_to_utc, combine_date_and_time, load_csv_data
+from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface, combine_date_and_time, load_csv_data
 import datetime as dt
 import pandas as pd
 
@@ -45,16 +45,6 @@ def enter_specifications(i: int) -> None:
             min_value=0.0,
             value=st.session_state.wind_drivetrain_efficiency[i],
             key=f"wind_drivetrain_efficiency_{i}"
-        )
-
-        # Inverter Efficiency
-        st.session_state.wind_inverter_efficiency = [98.0]
-        if len(st.session_state.wind_inverter_efficiency) < st.session_state.num_wind_types:
-            st.session_state.wind_inverter_efficiency.extend([0.0] * (st.session_state.num_wind_types - len(st.session_state.wind_inverter_efficiency)))
-        st.session_state.wind_inverter_efficiency[i] = st.number_input(f"Inverter Efficiency [%]:", 
-            min_value=0.0,
-            value=st.session_state.wind_inverter_efficiency[i],
-            key=f"wind_inverter_efficiency_{i}"
         )
 
         # Hub Height
@@ -127,23 +117,41 @@ def enter_specifications(i: int) -> None:
     # Economic Validation
     if st.session_state.economic_validation:
         # Investment Cost
-        if len(st.session_state.wind_investment_cost) != st.session_state.num_wind_types:
-            st.session_state.wind_investment_cost = [0.0] * st.session_state.num_wind_types
-        st.session_state.wind_investment_cost[i] = st.number_input(
-            f"Investment Cost [USD]:", 
-            min_value=0.0, 
-            value=st.session_state.wind_investment_cost[i],
-            key=f"wind_investment_cost_{i}"
-        )
+        col1, col2 = st.columns(2)
+        with col1:
+            if len(st.session_state.wind_investment_cost) != st.session_state.num_wind_types:
+                st.session_state.wind_investment_cost = [0.0] * st.session_state.num_wind_types
+            st.session_state.wind_investment_cost[i] = st.number_input(
+                f"Investment Cost []:", 
+                min_value=0.0, 
+                value=st.session_state.wind_investment_cost[i],
+                key=f"wind_investment_cost_{i}"
+            )
+        with col2:
+            if len(st.session_state.wind_exclude_investment_cost) != st.session_state.num_wind_types:
+                st.session_state.wind_exclude_investment_cost = [False] * st.session_state.num_wind_types
+            st.session_state.wind_exclude_investment_cost[i] = st.checkbox(
+                "Exclude Investment Cost", 
+                value = st.session_state.wind_exclude_investment_cost[i])
 
         # Yearly Operation and Maintenance Cost
         if len(st.session_state.wind_maintenance_cost) != st.session_state.num_wind_types:
             st.session_state.wind_maintenance_cost = [0.0] * st.session_state.num_wind_types
         st.session_state.wind_maintenance_cost[i] = st.number_input(
-            f"Yearly Operation and Maintenance Cost [USD/year]:", 
+            f"Yearly Operation and Maintenance Cost [% of investment cost per year]:", 
             min_value=0.0, 
             value=st.session_state.wind_maintenance_cost[i],
             key=f"wind_maintenance_cost_{i}"
+        )
+
+        # End of Project Cost
+        if len(st.session_state.wind_end_of_project_cost) != st.session_state.num_wind_types:
+            st.session_state.wind_end_of_project_cost = [0.0] * st.session_state.num_wind_types
+        st.session_state.wind_end_of_project_cost[i] = st.number_input(
+            f"End of Project Cost []:", 
+            min_value=0.0, 
+            value=st.session_state.wind_end_of_project_cost[i],
+            key=f"wind_end_of_project_cost_{i}"
         )
 
     if st.button("Close"):
@@ -168,7 +176,6 @@ def wind() -> None:
         st.session_state.wind_installation_dates = [dt.datetime.now() for _ in range(st.session_state.wind_num_units)]
 
     with st.expander(f"Installation Dates", expanded=False):
-        st.session_state.selected_timezone_wind = timezone_selector()
         if st.session_state.wind_num_units > 1:
             # Checkbox to determine if the installation date is the same for all units
             st.session_state.wind_same_date = st.checkbox("Same installation date for all units", value=st.session_state.wind_same_date)
@@ -180,20 +187,14 @@ def wind() -> None:
                     st.session_state.wind_installation_dates = [today_midnight for _ in range(st.session_state.wind_num_units)]
 
                 # Single date and time input for all units
-                col1, col2 = st.columns(2)
-                with col1:
-                    same_installation_date = st.date_input(
-                        "Installation Date",
-                        value=st.session_state.wind_installation_dates[0].date() if st.session_state.wind_installation_dates[0] else dt.datetime.combine(dt.date.today(), dt.time.min)
-                    )
-                with col2:
-                    same_installation_time = st.time_input(
-                        "Installation Time",
-                        value=st.session_state.wind_installation_dates[0].time() #if st.session_state.installation_dates[0] else dt.datetime.now().time()
-                    )
+                same_installation_date = st.date_input(
+                    "Installation Date",
+                    value=st.session_state.wind_installation_dates[0].date() if st.session_state.wind_installation_dates[0] else dt.datetime.combine(dt.date.today(), dt.time.min)
+                )
+
                 
                 # Combine date and time
-                same_installation_datetime = combine_date_and_time(same_installation_date, same_installation_time)
+                same_installation_datetime = combine_date_and_time(same_installation_date)
                 
                 # Set the same datetime for all units
                 for i in range(st.session_state.wind_num_units):
@@ -202,42 +203,25 @@ def wind() -> None:
                 # Multiple date inputs for each unit                
                 for i in range(st.session_state.wind_num_units):
                 # Create a date and time input for each unit
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        input_date = st.date_input(
-                            f"Installation Date for Unit {i + 1}",
-                            value=st.session_state.wind_installation_dates[i].date() if st.session_state.wind_installation_dates else dt.datetime.combine(dt.date.today(), dt.time.min),
-                            key=f"date_input_{i}"
-                        )
-                    with col2:
-                        input_time = st.time_input(
-                            f"Installation Time for Unit {i + 1}",
-                            value=st.session_state.wind_installation_dates[i].time() if st.session_state.wind_installation_dates else dt.time.min,
-                            key=f"time_input_{i}"
-                        )
+                    input_date = st.date_input(
+                        f"Installation Date for Unit {i + 1}",
+                        value=st.session_state.wind_installation_dates[i].date() if st.session_state.wind_installation_dates else dt.datetime.combine(dt.date.today(), dt.time.min),
+                        key=f"date_input_{i}"
+                    )
                     
                     # Combine date and time into a datetime object
-                    st.session_state.wind_installation_dates[i] = combine_date_and_time(input_date, input_time)
+                    st.session_state.wind_installation_dates[i] = combine_date_and_time(input_date)
         else:
             # Only one unit, so no checkbox needed
             st.write("Enter the installation date for the unit:")
-            col1, col2 = st.columns(2)
-            with col1:
-                input_date = st.date_input(
-                    "Installation Date",
-                    value=st.session_state.wind_installation_dates[0].date() if st.session_state.wind_installation_dates else dt.datetime.combine(dt.date.today(), dt.time.min)
-                )
-            with col2:
-                input_time = st.time_input(
-                    "Installation Time",
-                    value=st.session_state.wind_installation_dates[0].time() if st.session_state.wind_installation_dates else dt.time.min
-                )
-            
-            # Combine date and time into a datetime object
-            st.session_state.wind_installation_dates[0] = combine_date_and_time(input_date, input_time)
-        
-        st.session_state.wind_installation_dates_utc = convert_dates_to_utc(st.session_state.wind_installation_dates, st.session_state.selected_timezone_wind)
+            input_date = st.date_input(
+                "Installation Date",
+                value=st.session_state.wind_installation_dates[0].date() if st.session_state.wind_installation_dates else dt.datetime.combine(dt.date.today(), dt.time.min)
+            )
 
+            # Combine date and time into a datetime object
+            st.session_state.wind_installation_dates[0] = combine_date_and_time(input_date)
+        
     # Adjust the installation dates list if the number of units changes
     if len(st.session_state.wind_type) != st.session_state.wind_num_units:
         st.session_state.wind_type = [None] * st.session_state.wind_num_units

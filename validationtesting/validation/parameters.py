@@ -41,7 +41,7 @@ class ComponentSelection(BaseModel):
     technical_validation: bool
     economic_validation: bool
     energy_balance: bool
-
+    conversion: bool
 
 class GeneralInfo(BaseModel):
     """
@@ -58,8 +58,10 @@ class GeneralInfo(BaseModel):
     start_date: datetime
     end_date: datetime
     discount_rate: float
+    timezone: str
     lat: float
     lon: float
+    current_type: str
 
 
 class SolarPV(BaseModel):
@@ -69,9 +71,7 @@ class SolarPV(BaseModel):
     Attributes:
         solar_pv_num_units (int): Number of solar PV units.
         same_date (bool): Whether all units share the same installation date.
-        selected_timezone_solar_pv (str): Selected timezone for solar PV installation dates.
         installation_dates (list): Installation dates for each unit.
-        installation_dates_utc (list): Installation dates in UTC.
         num_solar_pv_types (int): Number of solar PV types.
         same_type (bool): Whether all units share the same type.
         solar_pv_types (list): List of solar PV types.
@@ -101,9 +101,7 @@ class SolarPV(BaseModel):
     # Parameters
     solar_pv_num_units: int
     same_date: bool
-    selected_timezone_solar_pv: str
     installation_dates: list
-    installation_dates_utc: list
     num_solar_pv_types: int
     same_type: bool
     solar_pv_types: list
@@ -127,7 +125,9 @@ class SolarPV(BaseModel):
     pv_dynamic_inverter_efficiency: bool
     pv_inverter_efficiency: list
     solar_pv_investment_cost: list
+    solar_pv_exclude_investment_cost: list
     solar_pv_maintenance_cost: list
+    solar_pv_end_of_project_cost: list
     solar_pv_curtailment: list
 
 class Battery(BaseModel):
@@ -137,9 +137,7 @@ class Battery(BaseModel):
     Attributes:
         battery_num_units (int): Number of battery units.
         battery_installation_dates (list): Installation dates for each battery unit.
-        battery_installation_dates_utc (list): Installation dates for each unit in UTC.
         battery_same_date (bool): Whether all units share the same installation date.
-        selected_timezone_battery (str): Selected timezone for battery installation dates.
         battery_same_type (bool): Whether all units share the same type.
         battery_types (list): List of battery types.
         battery_type (list): Type of battery for each unit.
@@ -168,10 +166,9 @@ class Battery(BaseModel):
     # Parameters
     battery_num_units: int
     battery_installation_dates: list
-    battery_installation_dates_utc: list
     battery_same_date: bool
-    selected_timezone_battery: str
     battery_same_type: bool
+    num_battery_types: int
     battery_types: list
     battery_type: list
     battery_temporal_degradation: bool
@@ -187,14 +184,19 @@ class Battery(BaseModel):
     battery_max_soc: list
     battery_max_charge_power: list
     battery_max_discharge_power: list
+    battery_min_discharge_time: list
+    battery_min_charge_time: list
     battery_inverter_efficiency: list
     battery_efficiency_type: str
     battery_inverter_eff_included: list
     battery_temporal_degradation_rate: list
     battery_investment_cost: list
+    battery_exclude_investment_cost: list
     battery_maintenance_cost: list
+    battery_end_of_project_cost: list
     battery_chemistry: list
     battery_model: list
+    battery_degradation_accounting: str
 
 class SolarIrradiation(BaseModel):
     """
@@ -205,7 +207,6 @@ class SolarIrradiation(BaseModel):
         solar_irradiation_delimiter (str): The delimiter for solar irradiation data.
         solar_irradiation_decimal (str): The decimal separator for solar irradiation data.
         solar_irradiation_time_format (str): The time format for solar irradiation data.
-        solar_irradiation_timezone (str): The timezone for solar irradiation data.
         irradiation_data_uploaded (bool): Whether irradiation data has been uploaded.
         Input_GHI (bool): Whether Global Horizontal Irradiance (GHI) data is included.
         Input_DHI (bool): Whether Diffuse Horizontal Irradiance (DHI) data is included.
@@ -214,14 +215,12 @@ class SolarIrradiation(BaseModel):
         solar_irradiation_data_source (str): The data source for solar irradiation data.
         albedo (bool): Whether albedo is included.
         albedo_coefficient (float): The albedo coefficient.
-        selected_timezone_solar_irradiation (str): The selected timezone for solar irradiation.
     """
     # Parameters
     solar_irradiation_selected_input_type: str
     solar_irradiation_delimiter: str
     solar_irradiation_decimal: str
     solar_irradiation_time_format: str
-    solar_irradiation_timezone: str
     irradiation_data_uploaded: bool
     Input_GHI: bool
     Input_DHI: bool
@@ -230,7 +229,6 @@ class SolarIrradiation(BaseModel):
     solar_irradiation_data_source: str
     albedo: bool
     albedo_coefficient: float
-    selected_timezone_solar_irradiation: str
 
 class Wind(BaseModel):
     """
@@ -239,9 +237,7 @@ class Wind(BaseModel):
     Attributes:
     wind_num_units (int): Number of wind units.
     wind_installation_dates (list): Installation dates for each wind unit.
-    wind_installation_dates_utc (list): Installation dates for each unit in UTC.
     wind_same_date (bool): Whether all units share the same installation date.
-    selected_timezone_wind (str): Selected timezone for wind installation dates.
     wind_types (list): List of wind types.
     wind_type (list): Type of wind for each unit.
     wind_same_type (bool): Whether all units share the same type.
@@ -249,7 +245,6 @@ class Wind(BaseModel):
     wind_lifetime (list): Lifetime for each wind unit.
     wind_rated_power (list): Rated power for each wind unit.
     wind_drivetrain_efficiency (list): Drivetrain efficiency for each wind unit.
-    wind_inverter_efficiency (list): Inverter efficiency for each wind unit.
     wind_diameter (list): Diameter for each wind unit.
     wind_hub_height (list): Hub height for each wind unit.
     wind_power_curve_uploaded (list): Whether power curve data has been uploaded for each wind unit.
@@ -267,17 +262,15 @@ class Wind(BaseModel):
     """
     wind_num_units: int
     wind_installation_dates: list
-    wind_installation_dates_utc: list
     wind_same_date: bool
-    selected_timezone_wind: str
     wind_types: list
     wind_type: list
+    num_wind_types: int
     wind_same_type: bool
     wind_turbine_type: list
     wind_lifetime: list
     wind_rated_power: list
     wind_drivetrain_efficiency: list
-    wind_inverter_efficiency: list
     wind_diameter: list
     wind_hub_height: list
     wind_power_curve_uploaded: list
@@ -290,7 +283,9 @@ class Wind(BaseModel):
     wind_surface_type: str
     wind_surface_roughness: float
     wind_investment_cost: list
+    wind_exclude_investment_cost: list
     wind_maintenance_cost: list
+    wind_end_of_project_cost: list
     wind_curtailment: list
 
 class Generator(BaseModel):
@@ -300,9 +295,7 @@ class Generator(BaseModel):
     Attributes:
     generator_num_units (int): Number of generator units.
     generator_installation_dates (list): Installation dates for each generator unit.
-    generator_installation_dates_utc (list): Installation dates for each unit in UTC.
     generator_same_date (bool): Whether all units share the same installation date.
-    selected_timezone_generator (str): Selected timezone for generator installation dates.
     generator_types (list): List of generator types.
     generator_type (list): Type of generator for each unit.
     generator_same_type (bool): Whether all units share the same type.
@@ -328,9 +321,8 @@ class Generator(BaseModel):
     """
     generator_num_units: int
     generator_installation_dates: list
-    generator_installation_dates_utc: list
     generator_same_date: bool
-    selected_timezone_generator: str
+    num_generator_types: int
     generator_types: list
     generator_type: list
     generator_same_type: bool
@@ -349,10 +341,22 @@ class Generator(BaseModel):
     generator_fuel_consumption_scope: list
     generator_total_fuel_consumption: list
     generator_investment_cost: list
+    generator_exclude_investment_cost: list
     generator_maintenance_cost: list
+    generator_end_of_project_cost: list
     generator_fuel_price: float
     generator_variable_fuel_price: bool
     generator_variable_fuel_price_uploaded: bool
+
+class Conversion(BaseModel):
+    solar_pv_conversion_efficiency: float
+    wind_conversion_efficiency: float
+    generator_conversion_efficiency: float
+    battery_conversion_efficiency_ac_dc: float
+    battery_conversion_efficiency_dc_ac: float
+    solar_pv_connection_type: str
+    wind_connection_type: str
+    conversion_losses_data_uploaded: bool
 
 class UploadModelOutput(BaseModel):
     """
@@ -392,6 +396,7 @@ class ProjectParameters(BaseModel):
     battery_parameters: Battery
     wind_parameters: Wind
     generator_parameters: Generator
+    conversion_parameters: Conversion
     upload_model_parameters: UploadModelOutput
     generate_plots: GeneratePlots
 

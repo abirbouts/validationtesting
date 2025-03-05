@@ -13,7 +13,7 @@ from validationtesting.validation.wind_validation import wind_benchmark
 
 class Benchmark():
     """Class to calculate the benchmark of the model output"""
-    def __init__(self) -> None:
+    def __init__(self,component_text, progress_bar, progress_step, progress) -> None:
         """Initialize the Benchmark class, run functions to calculate the benchmark and save the combined benchmark"""
         self.logger = logging.getLogger('Benchmark')
         self.logger.info("Starting Benchmark calculation...")
@@ -26,6 +26,10 @@ class Benchmark():
         combined_df = None
 
         for component_name, benchmark_function in components.items():
+            if component_name == "solar_pv":
+                component_text.text("Solar PV")
+            elif component_name == "wind":
+                component_text.text("Wind")
             component = st.session_state.get(component_name)
             if component and callable(benchmark_function):
                 benchmark_function()
@@ -33,7 +37,9 @@ class Benchmark():
                 if combined_df is None: 
                     combined_df = resource_df
                 else:
-                    combined_df = pd.merge(combined_df, resource_df, on="UTC Time", how='outer')
+                    combined_df = pd.merge(combined_df, resource_df, on="Time", how='outer')
+                progress += progress_step
+                progress_bar.progress(progress)
         combined_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results" / f"combined_model_benchmark.csv"
         combined_df.to_csv(combined_data_path, index=False)
         self.logger.info(f"Combined Benchmark saved in {combined_data_path}")
@@ -44,6 +50,6 @@ class Benchmark():
         model_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "inputs" / f"model_output_{resource}.csv"
         benchmark_df = pd.read_csv(benchmark_data_path)
         model_df = pd.read_csv(model_data_path)
-        combined_df = pd.merge(benchmark_df, model_df, on="UTC Time", how='outer')
-        combined_df = combined_df.loc[:, combined_df.columns.str.contains('UTC Time|Model|Benchmark')]
+        combined_df = pd.merge(benchmark_df, model_df, on="Time", how='outer')
+        combined_df = combined_df.loc[:, combined_df.columns.str.contains('Time|Model|Benchmark')]
         return combined_df

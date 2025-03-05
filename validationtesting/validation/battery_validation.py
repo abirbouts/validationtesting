@@ -14,10 +14,10 @@ def test_charging_rate(battery_power: float, max_charge_power: float, max_discha
     """Test if the battery power is within the charge and discharge power constraints."""
     return not (battery_power > max_discharge_power or (0 - battery_power) > max_charge_power)
 
-def test_soc(battery_capacity: float, current_energy_stored: float, min_soc: float, max_soc: float) -> tuple:
+def test_soc(battery_capacity: float, current_energy_stored: float, min_soc: float, max_soc: float, soc_tolerance: float) -> tuple:
     """Test if the battery state of charge is within the limits."""
     soc = current_energy_stored / battery_capacity
-    is_within_limits = min_soc <= soc <= max_soc
+    is_within_limits = (min_soc-soc_tolerance) <= soc <= (max_soc+soc_tolerance)
     return soc, is_within_limits
 
 def temporal_degradation_capacity(battery_capacity: float, degradation_rate: float, date: datetime.date, installation_date: datetime.date) -> float:
@@ -61,7 +61,7 @@ def battery_validation_testing() -> None:
     scope = st.session_state.battery_model_output_scope
     max_charge_powers = st.session_state.battery_max_charge_power
     max_discharge_powers = st.session_state.battery_max_discharge_power
-    installation_dates = st.session_state.battery_installation_dates_utc
+    installation_dates = st.session_state.battery_installation_dates
     lifetime = st.session_state.battery_lifetime
     end_of_life = [installation_dates[unit].replace(year=installation_dates[unit].year + lifetime[unit]) for unit in range(num_units)]
     battery_type = st.session_state.battery_type
@@ -74,27 +74,25 @@ def battery_validation_testing() -> None:
     max_soc = [x / 100 for x in st.session_state.battery_max_soc]
     temporal_degradation_rate = [x / 100 for x in st.session_state.battery_temporal_degradation_rate]
     cyclic_degradation = st.session_state.battery_cyclic_degradation
-    discount_rate = st.session_state.get("discount_rate") / 100
-    start_date = st.session_state.get("start_date")
+    salvage_value = (st.session_state.battery_degradation_accounting == "Salvage Value")
 
     if scope == "Per Unit":
         for unit in range(num_units):
-            battery_data[f"Model battery Discounted Energy Unit {unit+1} [Wh]"] = None
             battery_data[f"Energy Stored {unit+1} [Wh]"] = None
             battery_data[f"Capacity {unit+1}"] = None
             battery_data[f"Benchmark battery SoC Unit {unit+1} [%]"] = None
             battery_data[f"Charge Power Constraints Unit {unit+1}"] = None 
             battery_data[f"SoC Constraints Unit {unit+1}"] = None
-        battery_data[f"Model battery Discounted Energy Total [Wh]"] = 0
     else:
         battery_data[f"Charge Power Constraints Total"] = None 
         battery_data[f"SoC Constraints Total"] = None
         battery_data[f"Energy Stored Total [Wh]"] = None
         battery_data[f"Capacity Total"] = None
         battery_data[f"Benchmark battery SoC Total [%]"] = None
-        battery_data[f"Model battery Discounted Energy Total [Wh]"] = None
-    battery_data['UTC Time'] = pd.to_datetime(battery_data['UTC Time'], errors='coerce')
-    daily_data = battery_data.groupby(battery_data['UTC Time'].dt.date)
+        for unit in range(num_units):
+            battery_data[f"Replacement Capacity {unit+1}"] = None
+    battery_data['Time'] = pd.to_datetime(battery_data['Time'], errors='coerce')
+    daily_data = battery_data.groupby(battery_data['Time'].dt.date)
     
     if scope == "Per Unit":
         for unit in range(num_units):  # Loop through each unit first
@@ -125,7 +123,7 @@ def battery_validation_testing() -> None:
                 soc_values = []
 
                 for i, row in group.iterrows():  # Loop through time steps
-                    time = row['UTC Time']
+                    time = row['Time']
 
                     # Check if the unit is within installation and end-of-life dates
                     if not installation_dates[unit] <= time <= end_of_life[unit]:
@@ -149,43 +147,89 @@ def battery_validation_testing() -> None:
                     battery_data.at[i, f"Charge Power Constraints Unit {unit+1}"] = test_charging_rate(
                         battery_power, max_charge_power, max_discharge_power
                     )
-                    soc_value, battery_data.at[i, f"SoC Constraints Unit {unit+1}"] = test_soc(battery_capacity, current_energy_stored, min_soc[type], max_soc[type])
+                    soc_value, battery_data.at[i, f"SoC Constraints Unit {unit+1}"] = test_soc(battery_capacity, current_energy_stored, min_soc[type], max_soc[type], soc_tolerance=0.005)
                     soc_values.append(soc_value)
                     battery_data.at[i, f"Benchmark battery SoC Unit {unit+1} [%]"] = soc_value
                     battery_data.at[i, f"Capacity {unit+1}"] = battery_capacity
                     battery_data.at[i, f"Energy Stored {unit+1} [Wh]"] = current_energy_stored
                     
-                    # Calculate and update discounted energy
-                    discounted_energy = battery_power / ((1 + discount_rate) ** ((time - start_date).days / 365))
-                    battery_data.at[i, f"Model battery Discounted Energy Unit {unit+1} [Wh]"] = discounted_energy
-                    battery_data.at[i, f"Model battery Discounted Energy Total [Wh]"] += discounted_energy
-
     if scope == "Total":
+        st.write("--------------------")
+        #start_year = datetime.datetime.strptime(battery_data.iloc[0]['Time'], '%Y-%m-%d %H:%M:%S').year
+        #end_year = datetime.datetime.strptime(battery_data.iloc[-1]['Time'], '%Y-%m-%d %H:%M:%S').year
+        start_year = battery_data.iloc[0]['Time'].year
+        end_year = battery_data.iloc[-1]['Time'].year
+        number_of_years = (end_year - start_year) + 1  # +1 to include both start & end years
+        progress_step = 1 / number_of_years
+        battery_progress = 0
+        battery_progress_bar = st.progress(battery_progress)
+        battery_text = st.empty()
+
         charging_efficiencies = num_units * [0]
         discharging_efficiencies = num_units * [0]
         battery_capacities = num_units * [0]
+        current_energy_stored = 0
+        if cyclic_degradation:
+            model_name = st.session_state.battery_model[0]
+            model_class = getattr(models, model_name)
+            cell = model_class()
+            soc_values = {}
         for i, row in battery_data.iterrows():
             total_max_charge_power = 0
             total_max_discharge_power = 0
             total_battery_capacity = 0
-            time = row['UTC Time']
+            time = row['Time']
+            if time.hour == 0 and time.month == 1 and time.day == 1:
+                battery_progress += progress_step
+                battery_progress_bar.progress(battery_progress)
+                battery_text.write(f"Processing year {time.year} for battery validation")
+                if salvage_value:
+                    for unit in range(num_units):
+                        type = int(battery_type[unit].replace("Type ", "")) - 1
+                        if unit in soc_values:
+                            cell = model_class()
+                            soh = get_cyclic_degradation(cell, soc_values[unit])
+                            battery_replacement = (1-soh) * initial_battery_capacity[type]
+                            battery_data.at[i, f"Replacement Capacity {unit+1}"] = battery_replacement
+                            soc_values[unit] = [soc_values[unit][-1]]
+            if salvage_value and i == len(battery_data) - 1:
+                for unit in range(num_units):
+                    type = int(battery_type[unit].replace("Type ", "")) - 1
+                    if unit in soc_values:
+                        cell = model_class()
+                        soh = get_cyclic_degradation(cell, soc_values[unit])
+                        battery_replacement = (1-soh) * initial_battery_capacity[type]
+                        battery_data.at[i, f"Replacement Capacity {unit+1}"] = battery_replacement
+                        soc_values[unit] = [soc_values[unit][-1]]
             for unit in range(num_units):
                 type = int(battery_type[unit].replace("Type ", "")) - 1
 
-                if i == 0:
-                    current_energy_stored = initial_soc[type] * initial_battery_capacity[type]
+                if installation_dates[unit] <= time <= end_of_life[unit]:  
+                    max_charge_power = max_charge_powers[type]
+                    max_discharge_power = max_discharge_powers[type]
                     battery_capacity = initial_battery_capacity[type]
-
-                if st.session_state.battery_temporal_degradation:
-                    battery_capacity = temporal_degradation_capacity(initial_battery_capacity[type], temporal_degradation_rate[type], time.date(), installation_dates[unit])
-                
-                if not installation_dates[unit] <= time <= end_of_life[unit]:
+                    if cyclic_degradation:
+                        if unit in soc_values:
+                            soc_values[unit].append(soc_value)
+                            if salvage_value:
+                                pass
+                            else:
+                                soh = get_cyclic_degradation(cell, soc_values[unit])
+                                battery_capacity = soh * battery_capacity
+                                max_charge_power = max_charge_power * soh
+                                max_discharge_power = max_discharge_power * soh
+                        else:
+                            soc_values[unit] = [initial_soc[type]]
+                else:
                     max_charge_power = 0
                     max_discharge_power = 0
                     battery_capacity = 0
-                else:
-                    max_charge_power = max_charge_powers[type]
-                    max_discharge_power = max_discharge_powers[type]                
+
+                if installation_dates[unit] == time:
+                    current_energy_stored += initial_soc[type] * initial_battery_capacity[type]
+
+                if st.session_state.battery_temporal_degradation:
+                    battery_capacity = temporal_degradation_capacity(battery_capacity[type], temporal_degradation_rate[type], time.date(), installation_dates[unit])                      
 
                 total_max_charge_power += max_charge_power
                 total_max_discharge_power += max_discharge_power
@@ -193,24 +237,36 @@ def battery_validation_testing() -> None:
                 charging_efficiencies[unit] = charging_efficiency[type]
                 discharging_efficiencies[unit] = discharging_efficiency[type]
                 battery_capacities[unit] = battery_capacity
-
-            total_charging_efficiency = sum(charging_efficiencies[unit] * battery_capacities[unit] for unit in range(num_units)) / total_battery_capacity
-            total_discharging_efficiency = sum(discharging_efficiencies[unit] * battery_capacities[unit] for unit in range(num_units)) / total_battery_capacity
-            min_soc_total = sum(min_soc[unit] * battery_capacities[unit] for unit in range(num_units)) / total_battery_capacity
-            max_soc_total = sum(max_soc[unit] * battery_capacities[unit] for unit in range(num_units)) / total_battery_capacity
             battery_power = row[f'Model battery Energy Total [Wh]']
-            if st.session_state.battery_inverter_eff_included:
-                if battery_power <= 0:
-                    current_energy_stored -= battery_power * total_charging_efficiency
-                else:
-                    current_energy_stored -= battery_power / total_discharging_efficiency
+            #battery_power = row[f'Model battery SoC Total [%]']
+
+            if total_battery_capacity == 0:
+                battery_data.at[i, f"Charge Power Constraints Total"] = test_charging_rate(0, total_max_charge_power, total_max_discharge_power)
+                battery_data.at[i, f"Benchmark battery SoC Total [%]"], battery_data.loc[i, f"SoC Constraints Total"] = 0, True
+                battery_data.at[i, f"Energy Stored Total [Wh]"] = 0
+                battery_data.at[i, f"Capacity Total"] = 0
+
+            else:
+                total_charging_efficiency = sum(charging_efficiencies[unit] * battery_capacities[unit] for unit in range(num_units)) / total_battery_capacity
+                total_discharging_efficiency = sum(discharging_efficiencies[unit] * battery_capacities[unit] for unit in range(num_units)) / total_battery_capacity
+                min_soc_total = sum(min_soc[unit] * battery_capacities[unit] for unit in range(num_units)) / total_battery_capacity
+                max_soc_total = sum(max_soc[unit] * battery_capacities[unit] for unit in range(num_units)) / total_battery_capacity
+
+                if st.session_state.battery_inverter_eff_included:
+                    if battery_power <= 0:
+                        current_energy_stored -= battery_power * total_charging_efficiency
+                    else:
+                        current_energy_stored -= battery_power / total_discharging_efficiency
+
+                battery_data.at[i, f"Charge Power Constraints Total"] = test_charging_rate(battery_power, total_max_charge_power, total_max_discharge_power)
+                soc_value, battery_data.at[i, f"Benchmark battery SoC Total [%]"] = test_soc(total_battery_capacity, current_energy_stored, min_soc_total, max_soc_total, soc_tolerance=0.005)
+                battery_data.loc[i, f"SoC Constraints Total"] = soc_value
+                battery_data.at[i, f"Energy Stored Total [Wh]"] = current_energy_stored
+                battery_data.at[i, f"Capacity Total"] = total_battery_capacity
 
 
-            battery_data.at[i, f"Charge Power Constraints Total"] = test_charging_rate(battery_power, total_max_charge_power, total_max_discharge_power)
-            battery_data.at[i, f"Benchmark battery SoC Total [%]"], battery_data.loc[i, f"SoC Constraints Total"] = test_soc(total_battery_capacity, current_energy_stored, min_soc_total, max_soc_total)
-            battery_data.at[i, f"Energy Stored Total [Wh]"] = current_energy_stored
-            battery_data.at[i, f"Capacity Total"] = total_battery_capacity
-            battery_data.at[i, f"Model battery Discounted Energy Total [Wh]"] = battery_power / ((1 + discount_rate) ** ((time - start_date).days / 365))
 
+    battery_text.write("Saving battery validation results...")
     results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "battery_validation.csv"
     battery_data.to_csv(results_data_path)
+    battery_text.write("Battery Benchmark Calculation Completed.")

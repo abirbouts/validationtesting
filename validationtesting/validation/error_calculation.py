@@ -10,13 +10,15 @@ import pandas as pd
 import numpy as np
 from config.path_manager import PathManager
 import logging
+import os
 
 class ERROR():
     def __init__(self) -> None:
         """Initialize the Error class, run functions to calculate the errors and save the errors in CSV files."""
-        self.logger = logging.getLogger('MAPE')
-        self.logger.info("Starting Error calculation...")
+        # Create directory if it doesn't exist
         self.project_name = st.session_state.get("project_name")
+        error_calculation_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results" / "Error Calculation"
+        os.makedirs(error_calculation_path, exist_ok=True)
         components = {
             "solar_pv",
             "wind"
@@ -24,7 +26,7 @@ class ERROR():
 
         combined_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results" / f"combined_model_benchmark.csv"
         combined_df = pd.read_csv(combined_data_path)
-        combined_df['UTC Time'] = pd.to_datetime(combined_df['UTC Time'])
+        combined_df['Time'] = pd.to_datetime(combined_df['Time'])
 
         benchmark_data = {"total": {}, "yearly": {}, "monthly": {}, "hourly": {}}
         model_data = {"total": {}, "yearly": {}, "monthly": {}, "hourly": {}}
@@ -37,9 +39,9 @@ class ERROR():
             if component:
                 if st.session_state[f'{component_name}_model_output_scope'] == "Per Unit":
                     for i in range (st.session_state[f'{component_name}_num_units']):
-                        columns_to_keep = ['UTC Time', f'Model {component_name} Energy Unit {i+1} [Wh]', f'Benchmark {component_name} Energy Unit {i+1} [Wh]']
+                        columns_to_keep = ['Time', f'Model {component_name} Energy Unit {i+1} [Wh]', f'Benchmark {component_name} Energy Unit {i+1} [Wh]']
                         temp_df = combined_df[columns_to_keep]
-                        temp_df = temp_df.set_index('UTC Time')
+                        temp_df = temp_df.set_index('Time')
                         temp_df = temp_df.rename(columns={ f'Model {component_name} Energy Unit {i+1} [Wh]': 'model_output', f'Benchmark {component_name} Energy Unit {i+1} [Wh]': 'benchmark_output'})
                         total_mae, yearly_mae, monthly_mae, hourly_mae = self.mae(temp_df)
                         total_rmse, yearly_rmse, monthly_rmse, hourly_rmse = self.rmse(temp_df)
@@ -94,9 +96,9 @@ class ERROR():
                         rmse_data["hourly"][f"RMSE Unit {i + 1}"] = list(hourly_rmse.values())
 
                 
-                columns_to_keep = ['UTC Time', f'Model {component_name} Energy Total [Wh]', f'Benchmark {component_name} Energy Total [Wh]']
+                columns_to_keep = ['Time', f'Model {component_name} Energy Total [Wh]', f'Benchmark {component_name} Energy Total [Wh]']
                 temp_df = combined_df[columns_to_keep]
-                temp_df = temp_df.set_index('UTC Time')
+                temp_df = temp_df.set_index('Time')
                 temp_df = temp_df.rename(columns={ f'Model {component_name} Energy Total [Wh]': 'model_output', f'Benchmark {component_name} Energy Total [Wh]': 'benchmark_output'})
                 total_mae, yearly_mae, monthly_mae, hourly_mae = self.mae(temp_df)
                 total_rmse, yearly_rmse, monthly_rmse, hourly_rmse = self.rmse(temp_df)
@@ -162,7 +164,7 @@ class ERROR():
         for granularity, granularity_data in data.items():
             df = pd.DataFrame(granularity_data)
             df.index.name = granularity.capitalize()
-            results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results" / f"{component_name}_{metric_name.lower()}_{granularity}.csv"
+            results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(self.project_name) / "results" / "Error Calculation" / f"{component_name}_{metric_name.lower()}_{granularity}.csv"
             df.to_csv(results_data_path, index=False)
     
     def mae(self, df: pd.DataFrame) -> tuple[dict[str, float], dict[str, float], dict[str, float], dict[str, float]]:

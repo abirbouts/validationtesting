@@ -15,6 +15,7 @@ from validationtesting.validation.benchmark import Benchmark
 from validationtesting.validation.error_calculation import ERROR
 from validationtesting.validation.battery_validation import battery_validation_testing
 from validationtesting.validation.generator_validation import generator_validation_testing
+from validationtesting.validation.conversion_losses_validation import conversion_losses_validation
 from validationtesting.validation.cost_validation import cost_validation
 from validationtesting.validation.energy_balance_validation import energy_balance_validation
 from config.path_manager import PathManager
@@ -92,18 +93,51 @@ def run_model() -> None:
         # Run technical validation button
         if st.button("Start Technical Validation"):
             with st.spinner('Calculating benchmarks and checking for boundary exceedances...'):
+                progress = 0
+                progress_bar = st.progress(progress)
+                component_text = st.empty()
+                
+                number_progress_steps = 0
+                if st.session_state.solar_pv:
+                    number_progress_steps += 1
+                if st.session_state.wind:
+                    number_progress_steps += 1
+                if st.session_state.battery:
+                    number_progress_steps += 1
+                if st.session_state.generator:
+                    number_progress_steps += 1
+                if st.session_state.conversion:
+                    number_progress_steps += 1
+                if st.session_state.energy_balance:
+                    number_progress_steps += 1
+                progress_step = 1 / number_progress_steps
+
                 # Create a log file path
                 start_time = datetime.now()
-                if st.session_state.energy_balance:
-                    energy_balance_validation()
                 # Run technical validation for all components
                 if st.session_state.solar_pv or st.session_state.wind:
-                    Benchmark()
+                    Benchmark(component_text, progress_bar, progress_step, progress)
                     ERROR()
                 if st.session_state.battery:
+                    component_text.text("Battery")
                     battery_validation_testing()
+                    progress += progress_step
+                    progress_bar.progress(progress) 
                 if st.session_state.generator:
+                    component_text.text("Generator")
                     generator_validation_testing()
+                    progress += progress_step
+                    progress_bar.progress(progress)
+                if st.session_state.conversion:
+                    component_text.text("Conversion Losses")
+                    conversion_losses_validation()
+                    progress += progress_step
+                    progress_bar.progress(progress) 
+                if st.session_state.energy_balance:
+                    component_text.text("Energy Balance")
+                    energy_balance_validation()
+                    progress += progress_step
+                    progress_bar.progress(progress)
                 end_time = datetime.now()
                 calculation_time = end_time - start_time
                 st.success(f"Technical Validation Complete, Calculation Time = {calculation_time.total_seconds()} seconds")

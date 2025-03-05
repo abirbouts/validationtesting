@@ -58,7 +58,7 @@ def get_efficiency_from_formula(generator_energy: float, type: int) -> float:
 
 def test_power_limits(power: float, max_power: float, min_power: float) -> bool:
     """Test if the power is within the specified limits."""
-    if power > max_power or power < min_power:
+    if power > max_power or power < min_power and power != 0:
         return False
     else: 
         return True
@@ -102,7 +102,7 @@ def generator_validation_testing() -> None:
     st.session_state.generator_fuel_consumption_scope = ["Total"]
     num_units = st.session_state.generator_num_units
     scope = st.session_state.generator_model_output_scope
-    installation_dates = st.session_state.generator_installation_dates_utc
+    installation_dates = st.session_state.generator_installation_dates
     lifetime = st.session_state.generator_lifetime
     generator_type = st.session_state.generator_type
     dynamic_efficiency = st.session_state.generator_dynamic_efficiency
@@ -138,11 +138,14 @@ def generator_validation_testing() -> None:
     generator_data['Benchmark Discounted Fuel Cost generator Total [$]'] = 0
     generator_data['Power Constraints Total'] = 0
     generator_data['Check Fuel Consumption Total'] = 0
+    generator_data['Min Power'] = 0
+    generator_data['Max Power'] = 0
     logging.info(scope)
+    
     if scope == "Per Unit":
         for unit in range(num_units):
             for i in range(0, len(generator_data)):
-                time = generator_data.loc[i, 'UTC Time']
+                time = generator_data.loc[i, 'Time']
                 time = datetime.datetime.strptime(time, '%Y-%m-%d %H:%M:%S')
                 type = int(generator_type[unit].replace("Type ", "")) - 1
                 if installation_dates[unit] > time or installation_dates[unit].replace(year=installation_dates[unit].year + lifetime[type]) < time:
@@ -196,28 +199,44 @@ def generator_validation_testing() -> None:
                 false_count_fuel_consumption = (generator_data[f"Check Fuel Consumption Unit {unit+1}"] == False).sum()
                 logging.info(f'For Unit {unit+1} the fuel consumption does not match the energy output for {false_count_fuel_consumption} (out of {len(generator_data)}) timestamps')
     if scope == "Total":
+        start_year = datetime.datetime.strptime(generator_data.iloc[0]['Time'], '%Y-%m-%d %H:%M:%S').year
+        end_year = datetime.datetime.strptime(generator_data.iloc[-1]['Time'], '%Y-%m-%d %H:%M:%S').year
+        number_of_years = (end_year - start_year) + 1  # +1 to include both start & end years
+        progress_step = 1 / number_of_years
+        st.write("--------------------")
+        generator_progress = 0
+        generator_progress_bar = st.progress(generator_progress)
+        generator_text = st.empty()
+
         max_power = [0] * num_units
         min_power = [0] * num_units
         efficiency = [0] * num_units
+        energy_this_generator = [0] * num_units
         for i, row in generator_data.iterrows():
-            time = pd.to_datetime(row['UTC Time'])
-            total_energy = 0
+            time = pd.to_datetime(row['Time'])
+            if time.hour == 0 and time.month == 1 and time.day == 1:
+                generator_progress += progress_step
+                generator_progress_bar.progress(generator_progress)
+                generator_text.write(f"Processing year {time.year} for generator validation")
             total_max_power = 0
+            total_energy = row[f'Model generator Energy Total [Wh]']
+            remaining_energy = total_energy
             for unit in range(num_units):
                 type = int(generator_type[unit].replace("Type ", "")) - 1
-
                 if installation_dates[unit] > time or installation_dates[unit].replace(year=installation_dates[unit].year + lifetime[type]) < time:
                     max_power[unit] = 0
-                    min_power[unit] = 0
+                    min_power[unit] = None
                     unit_efficiency = 0
                 else:
                     max_power[unit] = max_powers[type]
                     min_power[unit] = min_powers[type]
                     if dynamic_efficiency:
+                        energy_this_generator[unit] = min(remaining_energy, max_power[unit])
+                        remaining_energy -= energy_this_generator[unit]
                         if dynamic_efficiency_type[type] == "Tabular Data":
-                            unit_efficiency = get_efficiency_from_tabular(row[f'Model generator Energy Unit {unit + 1} [Wh]'], type + 1)
+                            unit_efficiency = get_efficiency_from_tabular(energy_this_generator[unit], type + 1)
                         else:
-                            unit_efficiency = get_efficiency_from_formula(row[f'Model generator Energy Unit {unit + 1} [Wh]'], type)
+                            unit_efficiency = get_efficiency_from_formula(energy_this_generator[unit], type)
                     else:
                         unit_efficiency = initial_efficiency[type]
 
@@ -225,12 +244,17 @@ def generator_validation_testing() -> None:
                     unit_efficiency = temporal_degradation_efficiency(unit_efficiency, temporal_degradation_rate[type], time.date(), installation_dates[unit])
 
                 efficiency[unit] = unit_efficiency
-                total_energy += row[f'Model generator Energy Total [Wh]']
                 total_max_power += max_power[unit]
 
-            total_min_power = min(min_power)
-            total_efficiency = sum(efficiency[unit] * max_power[unit] for unit in range(num_units)) / total_max_power
+            total_min_power = min(x for x in min_power if x is not None) if min_power else 0
+            if not dynamic_efficiency:
+                total_efficiency = sum(efficiency[unit] * max_power[unit] for unit in range(num_units)) / total_max_power
+            else:
+                total_efficiency = sum(efficiency[unit] * energy_this_generator[unit] for unit in range(num_units)) / total_energy
+            generator_data.at[i, 'Min Power'] = total_min_power
+            generator_data.at[i, 'Max Power'] = total_max_power
             generator_data.at[i, 'Power Constraints Total'] = test_power_limits(total_energy, total_max_power, total_min_power)
+            st.write(total_energy, total_efficiency)
             generator_data.at[i, 'Benchmark Fuel Consumption generator Total [l]'] = get_fuel_consumption(total_energy, lhv[0], total_efficiency)
             generator_data.at[i, 'Model generator Discounted Energy Total [Wh]'] = total_energy / ((1 + discount_rate) ** ((time - start_date).days / 365))
 
@@ -243,10 +267,9 @@ def generator_validation_testing() -> None:
             generator_data.at[i, 'Benchmark Discounted Fuel Cost generator Total [$]'] = \
                 (generator_data.at[i, 'Benchmark Fuel Consumption generator Total [l]'] * fuel_price) / \
                 ((1 + discount_rate) ** ((time.year - start_date.year) + 1))
-
-        false_power_constraints = generator_data['Power Constraints Total'].eq(False).sum()
-        logging.info(f'There are {false_power_constraints} (out of {len(generator_data)}) timestamps where the power was not in boundaries.')
-
+            if i >= 30:
+                break
+        '''
         if fuel_consumption_scope[0] == "Total":
             benchmark_fuel_consumption = generator_data['Benchmark Fuel Consumption generator Total [l]'].sum()
             delta_fuel_consumption = model_fuel_consumption - benchmark_fuel_consumption
@@ -258,6 +281,9 @@ def generator_validation_testing() -> None:
             elif delta_fuel_consumption < 0:
                 logging.info(f'The model fuel consumption is {abs(delta_fuel_consumption)}l lower than the benchmark.')
                 logging.info(f'This is {abs(delta_percentage)}% lower than the benchmark.')
+        '''
 
+    generator_text.write("Saving generator validation results...")
     results_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "generator_validation.csv"
     generator_data.to_csv(results_data_path)
+    generator_text.write("Generator Benchmark Calculation Completed.")

@@ -14,13 +14,29 @@ from validationtesting.gui.views.utils import initialize_session_state
 
 import pandas as pd
 
+# Apply FiveThirtyEight style
+plt.style.use('fivethirtyeight')
+textwidthfraction = 0.7
+fontsize = 12 / textwidthfraction
+fontsize2 = 10 / textwidthfraction
+plt.rcParams.update({
+    "text.usetex": True,      
+    "font.family": "serif",
+    "font.size": fontsize,
+    "axes.titlesize": fontsize,
+    "axes.labelsize": fontsize,
+    "legend.fontsize": fontsize,
+    "xtick.labelsize": fontsize2,
+    "ytick.labelsize": fontsize2
+})
+
 @st.dialog("All Timestamps, where the difference between Model and Benchmark exceeds 10 percent")
 def flag_details(df, component) -> None:
     """
     Display the timestamps where the difference between the model and benchmark exceeds a certain threshold.
     """
     flagged_df = df[df['Difference Exceeds 10%']]
-    flagged_df = flagged_df.reset_index()[['UTC Time', f'Model {component} Energy Total [Wh]', f'Benchmark {component} Energy Total [Wh]']]
+    flagged_df = flagged_df.reset_index()[['Time', f'Model {component} Energy Total [Wh]', f'Benchmark {component} Energy Total [Wh]']]
     st.write(flagged_df)
 
 @st.dialog("MAE Details")
@@ -83,7 +99,7 @@ def add_lcoe_metric(component: str) -> None:
     data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"cost_validation.csv"
 
     # Load data
-    df = pd.read_csv(data_path, index_col='UTC Time', parse_dates=True)
+    df = pd.read_csv(data_path, index_col='Time', parse_dates=True)
 
 def add_difference_flag(component: str) -> pd.DataFrame:
     """
@@ -96,7 +112,7 @@ def add_difference_flag(component: str) -> pd.DataFrame:
     data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"combined_model_benchmark.csv"
 
     # Load data
-    df = pd.read_csv(data_path, index_col='UTC Time', parse_dates=True)
+    df = pd.read_csv(data_path, index_col='Time', parse_dates=True)
 
     # Define the model and benchmark columns
     model_col = f'Model {component} Energy Total [Wh]'
@@ -125,7 +141,7 @@ def mae_metric(component: str) -> None:
     project_name = st.session_state.get("project_name")
 
     # Define file paths
-    data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"{component}_mae_total.csv"
+    data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "Error Calculation" / f"{component}_mae_total.csv"
     df = pd.read_csv(data_path)
     st.metric(label="MAE Total", value=round(df['MAE Total'][0], 2))
     if st.button(f"View details", key=f"{component}_mae_details"):
@@ -232,10 +248,7 @@ def plot_model_vs_benchmark(component: str) -> None:
     plot_folder = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "plots"
 
     # Load data
-    df = pd.read_csv(data_path, index_col='UTC Time', parse_dates=True)
-
-    # Use FiveThirtyEight style
-    plt.style.use('fivethirtyeight')
+    df = pd.read_csv(data_path, index_col='Time', parse_dates=True)
 
     # Calculate hourly statistics for the entire year (Daily Pattern)
     if component == "battery":
@@ -249,20 +262,20 @@ def plot_model_vs_benchmark(component: str) -> None:
     # Plot daily pattern
     fig, ax = plt.subplots(figsize=(12, 6))
     hours = hourly_stats_model.index
-    ax.plot(hours, hourly_stats_model['mean'], label='Model Output (Average)', color='red')
-    ax.plot(hours, hourly_stats_benchmark['mean'], label='Benchmark Output (Average)', color='blue')
-    ax.fill_between(hours, hourly_stats_model['min'], hourly_stats_model['max'], color='lightpink', alpha=0.3, label='Model Output Range (Min to Max)')
-    ax.fill_between(hours, hourly_stats_benchmark['min'], hourly_stats_benchmark['max'], color='lightblue', alpha=0.3, label='Benchmark Output Range (Min to Max)')
+    ax.plot(hours, hourly_stats_model['mean'], label='Model Output', color='#E57373')
+    ax.plot(hours, hourly_stats_benchmark['mean'], label='Benchmark Output', color='#64B5F6')
+    ax.fill_between(hours, hourly_stats_model['min'], hourly_stats_model['max'], color='#E57373', alpha=0.3, label='Model Output Range')
+    ax.fill_between(hours, hourly_stats_benchmark['min'], hourly_stats_benchmark['max'], color='#64B5F6', alpha=0.3, label='Benchmark Output Range')
     ax.set_xlabel('Hour of the Day')
     ax.set_ylabel('Output [Wh]')
-    ax.set_title(f'Daily Average Output with Range - {component}')
+    #ax.set_title(f'Daily Average Energy Production')
     ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     ax.grid(True)
     plt.tight_layout()
 
     # Save daily plot
     daily_plot_path = plot_folder / f"{component}_model_vs_benchmark.png"
-    plt.savefig(daily_plot_path)
+    plt.savefig(daily_plot_path, bbox_inches='tight', facecolor="white", edgecolor="white")
     plt.close()
 
     # Calculate monthly hourly statistics
@@ -275,10 +288,10 @@ def plot_model_vs_benchmark(component: str) -> None:
         # Plot monthly pattern
         fig, ax = plt.subplots(figsize=(12, 6))
         hours = hourly_stats_model.index
-        ax.plot(hours, hourly_stats_model['mean'], label='Model Output (Average)', color='red')
-        ax.plot(hours, hourly_stats_benchmark['mean'], label='Benchmark Output (Average)', color='blue')
-        ax.fill_between(hours, hourly_stats_model['min'], hourly_stats_model['max'], color='lightpink', alpha=0.3, label='Model Output Range (Min to Max)')
-        ax.fill_between(hours, hourly_stats_benchmark['min'], hourly_stats_benchmark['max'], color='lightblue', alpha=0.3, label='Benchmark Output Range (Min to Max)')
+        ax.plot(hours, hourly_stats_model['mean'], label='Model Output (Average)', color='#E57373')
+        ax.plot(hours, hourly_stats_benchmark['mean'], label='Benchmark Output (Average)', color='#64B5F6')
+        ax.fill_between(hours, hourly_stats_model['min'], hourly_stats_model['max'], color='#E57373', alpha=0.3, label='Model Output Range (Min to Max)')
+        ax.fill_between(hours, hourly_stats_benchmark['min'], hourly_stats_benchmark['max'], color='#64B5F6', alpha=0.3, label='Benchmark Output Range (Min to Max)')
         ax.set_xlabel('Hour of the Day')
         ax.set_ylabel('Output [Wh]')
         ax.set_title(f'Monthly Average Output with Range for {month_name} - {component}')
@@ -288,7 +301,7 @@ def plot_model_vs_benchmark(component: str) -> None:
 
         # Save monthly plot
         monthly_plot_path = plot_folder / f"{component}_monthly_output_with_range_{month_name}.png"
-        plt.savefig(monthly_plot_path)
+        plt.savefig(monthly_plot_path, bbox_inches='tight', facecolor="white", edgecolor="white")
         plt.close()
 
     print(f"Daily and monthly output range plots saved in {plot_folder}.")
@@ -304,8 +317,8 @@ def plot_mae(component: str) -> None:
 
     for granularity, scope in zip(granularities, scopes):
         # Define file paths
-        mae_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"{component}_mae_{granularity}.csv"
-        benchmark_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"{component}_benchmark_mean_{granularity}.csv"
+        mae_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "Error Calculation" / f"{component}_mae_{granularity}.csv"
+        benchmark_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "Error Calculation" / f"{component}_benchmark_mean_{granularity}.csv"
         
         # Load data
         mae_data = pd.read_csv(mae_data_path)
@@ -319,13 +332,10 @@ def plot_mae(component: str) -> None:
             merged_data[scope] = pd.Categorical(merged_data[scope], categories=list(calendar.month_name)[1:], ordered=True)
             merged_data = merged_data.sort_values(by=scope)
 
-        # Set plotting style
-        plt.style.use('fivethirtyeight')
-
         # Create a new figure
         plt.figure(figsize=(10, 5))
         plt.errorbar(merged_data[scope], merged_data['Mean Benchmark Total'], 
-                     yerr=merged_data['MAE Total'], fmt='-o', ecolor='green', 
+                     yerr=merged_data['MAE Total'], fmt='-o', color='#64B5F6', ecolor='#E57373', 
                      capsize=5, label='Benchmark with MAE')
 
         plt.xlabel(scope)
@@ -346,7 +356,7 @@ def plot_mae(component: str) -> None:
         # Save the plot
         plot_folder = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "plots"
         plot_path = plot_folder / f"{component}_mae_{granularity}.png"
-        plt.savefig(plot_path)
+        plt.savefig(plot_path, bbox_inches='tight', facecolor="white", edgecolor="white")
         plt.close()  # Close the plot to free up memory
 
 def energy_balance_plot() -> None:
@@ -364,9 +374,9 @@ def energy_balance_plot() -> None:
     result_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"energy_balance.csv"
     data = pd.read_csv(result_path)
 
-    # Parse the UTC Time column into datetime and extract the hour
-    data['UTC Time'] = pd.to_datetime(data['UTC Time'])
-    data['Hour'] = data['UTC Time'].dt.hour
+    # Parse the Time column into datetime and extract the hour
+    data['Time'] = pd.to_datetime(data['Time'])
+    data['Hour'] = data['Time'].dt.hour
     data.drop(columns=['Total Energy [Wh]'], inplace=True)
 
     # Extract columns related to energy for renaming and averaging
@@ -456,7 +466,7 @@ def energy_balance_plot() -> None:
     plot_folder = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / "plots"
     os.makedirs(plot_folder, exist_ok=True)
     plot_path = plot_folder / f"energy_balance.png"
-    plt.savefig(plot_path)
+    plt.savefig(plot_path, bbox_inches='tight', facecolor="white", edgecolor="white")
     plt.close()
 
 def solar_pv_generate_plots() -> None:
@@ -557,7 +567,7 @@ def results() -> None:
 
         if results_component == "Solar PV":
             model_vs_benchmark_path = plots_path / f"solar_pv_model_vs_benchmark.png"
-            st.image(str(model_vs_benchmark_path), caption=f"Model vs. Benchmark Output with MAE", use_container_width=True)
+            st.image(str(model_vs_benchmark_path), caption=f"Model vs. Benchmark Output", use_container_width=True)
             st.write("Mean Benchmark Output with MAE")
             granularity = st.selectbox("Select Granularity", ["Hourly", "Monthly", "Yearly"])
             mae_path = plots_path / f"solar_pv_mae_{granularity.lower()}.png"
@@ -565,7 +575,7 @@ def results() -> None:
 
         if results_component == "Wind":
             model_vs_benchmark_path = plots_path / f"wind_model_vs_benchmark.png"
-            st.image(str(model_vs_benchmark_path), caption=f"Model vs. Benchmark Output with MAE", use_container_width=True)
+            st.image(str(model_vs_benchmark_path), caption=f"Model vs. Benchmark Output", use_container_width=True)
             st.write("Mean Benchmark Output with MAE")
             granularity = st.selectbox("Select Granularity", ["Hourly", "Monthly", "Yearly"])
             mae_path = plots_path / f"wind_mae_{granularity.lower()}.png"

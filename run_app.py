@@ -17,6 +17,8 @@ from validationtesting.gui.views.battery_page import battery
 from validationtesting.gui.views.wind_page import wind
 from validationtesting.gui.views.wind_data_page import wind_data
 from validationtesting.gui.views.generator_page import generator
+from validationtesting.gui.views.conversion_page import conversion
+from validationtesting.gui.views.upload_conversion_losses_page import upload_conversion_losses
 from validationtesting.gui.views.run_page import run_model
 from validationtesting.gui.views.results_page import results
 from validationtesting.utils.savetoyaml import save_to_yaml
@@ -152,6 +154,21 @@ if st.session_state.initialized:
                 )
 
                 active_pages["Battery"] = [battery_page, upload_battery_model_output_page]
+
+        if st.session_state.conversion:
+            conversion_page = st.Page(
+                page=conversion,
+                title="Conversion",
+                icon="🔄",
+            )
+
+            upload_conversion_losses_page = st.Page(
+                    page=upload_conversion_losses,
+                    title="Upload Model Conversion Losses Model",
+                    icon="📤",
+                )
+
+            active_pages["Conversion"] = [conversion_page, upload_conversion_losses_page]
 
         if st.session_state.energy_balance:
             def upload_consumption():

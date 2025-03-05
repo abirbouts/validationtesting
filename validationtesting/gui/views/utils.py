@@ -141,23 +141,10 @@ def csv_upload_interface(key_prefix: str) -> Tuple[st.file_uploader, str, str]:
     
     return uploaded_file, delimiter_value, decimal_value
 
-def time_format_timezone_selectors() -> tuple:
+def time_format_selectors() -> tuple:
     """
     Create selectors for time format and time zone.
     """
-    # List of all available time zones with country names
-    timezones_with_countries = ["Universal Time Coordinated - UTC"]
-    # Add all GMT time zones
-    gmt_offsets = range(-12, 15)  # GMT-12 to GMT+14
-    for offset in gmt_offsets:
-        sign = "+" if offset >= 0 else "-"
-        hours = abs(offset)
-        timezones_with_countries.append(f"UTC Offset {sign}{hours:02d}:00")
-    for country_code, timezones in pytz.country_timezones.items():
-        country_name = pytz.country_names[country_code]
-        for timezone in timezones:
-            timezones_with_countries.append(f"{country_name} - {timezone}")
-
     # Common time formats to select from
     TIME_FORMATS = [
         "%Y-%m-%d",                # 2024-01-01
@@ -171,37 +158,35 @@ def time_format_timezone_selectors() -> tuple:
         "Other"                     # Allow user to enter a custom format
     ]
 
-    col1, col2 = st.columns(2)
-    with col1:
-        # Select time format from common options
-        time_format_choice = st.selectbox("Select the time format of the CSV file:", TIME_FORMATS, index=1)
+    # Select time format from common options
+    time_format_choice = st.selectbox("Select the time format of the CSV file:", TIME_FORMATS, index=1)
 
-        # If "Other" is selected, show a text input for custom time format
-        if time_format_choice == "Other":
-            time_format = st.text_input("Enter the custom time format:", value="%Y-%m-%d %H:%M:%S")
-        else:
-            time_format = time_format_choice
-        st.write(f"Selected Time Format: {time_format}")
+    # If "Other" is selected, show a text input for custom time format
+    if time_format_choice == "Other":
+        time_format = st.text_input("Enter the custom time format:", value="%Y-%m-%d %H:%M:%S")
+    else:
+        time_format = time_format_choice
+    st.write(f"Selected Time Format: {time_format}")
 
-    with col2:
-        # Select time zone from a comprehensive list with country names
-        selected_timezone_with_country = st.selectbox("Select the time zone of the data (with country):", timezones_with_countries)
 
-        if "UTC Offset" in selected_timezone_with_country:
-            match = re.search(r'[+-]\d+', selected_timezone_with_country)
-            offset = int(match.group())
-            offset = offset * (-1)
-            selected_timezone = f"Etc/GMT{'+' if offset > 0 else ''}{offset}"
-        else:
-            # Extract just the timezone (without the country name)
-            selected_timezone = selected_timezone_with_country.split(' - ')[1]
-
-    return time_format, selected_timezone
+    return time_format
 
 def timezone_selector() -> tuple:
     """
     Create a selector for time zone.
     """
+    current_time_zone = st.session_state.timezone
+
+    # If the current timezone is in the Etc/GMT format, convert it to the corresponding UTC offset string.
+    if current_time_zone and "Etc/GMT" in current_time_zone:
+        match = re.search(r'Etc/GMT([+-]\d+)', current_time_zone)
+        if match:
+            offset = int(match.group(1))
+            utc_offset = -offset
+            sign = "+" if utc_offset >= 0 else "-"
+            hours = abs(utc_offset)
+            current_time_zone = f"UTC Offset {sign}{hours:02d}:00"
+
     # List of all available time zones with country names
     timezones_with_countries = ["Universal Time Coordinated - UTC"]
     # Add all GMT time zones
@@ -216,7 +201,9 @@ def timezone_selector() -> tuple:
             timezones_with_countries.append(f"{country_name} - {timezone}")
 
     # Select time zone from a comprehensive list with country names
-    selected_timezone_with_country = st.selectbox("Select the time zone of the data (with country):", timezones_with_countries)
+    selected_timezone_with_country = st.selectbox("Select the time zone for the project:", 
+                                                  timezones_with_countries,
+                                                  index=timezones_with_countries.index(current_time_zone) if current_time_zone in timezones_with_countries else 0)
 
     if "UTC Offset" in selected_timezone_with_country:
         match = re.search(r'[+-]\d+', selected_timezone_with_country)
@@ -226,8 +213,10 @@ def timezone_selector() -> tuple:
     else:
         # Extract just the timezone (without the country name)
         selected_timezone = selected_timezone_with_country.split(' - ')[1]
-
-    return selected_timezone
+    
+    st.session_state.timezone = selected_timezone
+    
+    return
 
 def convert_dates_to_utc(dates: list[dt.datetime], timezone_str: str) -> list[dt.datetime]:
     """
@@ -249,9 +238,9 @@ def convert_dates_to_utc(dates: list[dt.datetime], timezone_str: str) -> list[dt
 
     return dates_utc
 
-def combine_date_and_time(date_value: dt.date, time_value: dt.time) -> dt.datetime:
+def combine_date_and_time(date_value: dt.date) -> dt.datetime:
     """Combine date and time into a datetime object."""
-    return dt.datetime.combine(date_value, time_value)
+    return dt.datetime.combine(date_value, dt.time(0, 0))
 
 def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str) -> pd.DataFrame:
     """
@@ -292,7 +281,7 @@ def load_csv_data(uploaded_file, delimiter: str, decimal: str, parameter: str) -
     
 
 # Function to load and process time series data with time zones and format handling
-def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: str, time_format: str, timezone: str) -> pd.DataFrame:
+def load_timeseries_csv(uploaded_file, delimiter: str, decimal: str, time_format: str) -> pd.DataFrame:
     """
     Load CSV time-series data with given delimiter, decimal options, and convert the time column to UTC datetime.
     
@@ -300,8 +289,6 @@ def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: st
         uploaded_file: The uploaded CSV file.
         delimiter (str): The delimiter used in the CSV file.
         decimal (str): The decimal separator used in the CSV file.
-        time_format (str): The format of the time column to parse datetime (e.g., '%Y-%m-%d %H:%M:%S').
-        timezone (str): The time zone of the data (e.g., 'Europe/Berlin').
         parameter (str): The name of the data parameter (e.g., temperature or irradiation).
     
     Returns:
@@ -324,10 +311,8 @@ def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: st
         except ValueError as e:
             st.error(f"Error in parsing time column: {e}")
             return None
-
-        # Localize to the selected timezone and convert to UTC
-        local_tz = pytz.timezone(timezone)
-        time = data[time_column].apply(lambda x: local_tz.localize(x).astimezone(pytz.UTC))
+        
+        time = data[time_column]
 
         if time.empty:
             st.warning("No valid time series data found. Please check the CSV file.")
@@ -339,3 +324,75 @@ def load_timeseries_csv_with_timezone(uploaded_file, delimiter: str, decimal: st
     except Exception as e:
         st.error(f"Error during import of time from CSV: {e}")
         return None
+    
+def generate_flow_chart() -> None:
+    has_solar = st.session_state.solar_pv
+    has_wind = st.session_state.wind
+    has_battery = st.session_state.battery
+    has_generator = st.session_state.generator
+
+    mermaid_code = "flowchart TB\n"
+    if st.session_state.current_type == "Alternating Current":
+        if has_solar and st.session_state.solar_pv_connection_type == "Connected with the same Inverter as the Battery to the Microgrid":
+            mermaid_code += "subgraph Shared_System [DC Subystem]\n"
+            mermaid_code += f"Solar_PV --> DC_System\n"
+            mermaid_code += "Battery <--> DC_System\n"
+            mermaid_code += "DC_System <--> Inverter_DC_System\n"
+            mermaid_code += "end\n"
+            mermaid_code += "Inverter_DC_System <--> Microgrid\n"
+            if has_wind:
+                if st.session_state.wind_connection_type == "Connected with a AC-AC Converter to the Microgrid":
+                    mermaid_code += f"Wind --> AC-AC_Converter_Wind\n"
+                    mermaid_code += f"AC-AC_Converter_Wind --> Microgrid\n"
+                else:
+                    mermaid_code += f"Wind --> Microgrid\n"
+            if has_generator:
+                mermaid_code += "Generator --> Microgrid\n"
+
+        else:
+            if has_solar and st.session_state.solar_pv_connection_type == "Connected with a seperate Inverter to the Microgrid":
+                    mermaid_code += f"Solar_PV --> Inverter_Solar_PV\n"
+                    mermaid_code += f"Inverter_Solar_PV --> Microgrid\n"
+            if has_wind:
+                if st.session_state.wind_connection_type == "Connected with a AC-AC Converter to the Microgrid":
+                    mermaid_code += f"Wind --> AC-AC_Converter_Wind\n"
+                    mermaid_code += f"AC-AC_Converter_Wind --> Microgrid\n"
+                else:
+                    mermaid_code += f"Wind --> Microgrid\n"
+            if has_battery:
+                mermaid_code += "Battery <--> Inverter_Battery\n"
+                mermaid_code += "Inverter_Battery <--> Microgrid\n"
+            if has_generator:
+                mermaid_code += "Generator --> Microgrid\n"
+    
+    else:
+        if has_solar:
+            mermaid_code += f"Solar_PV --> Microgrid\n"
+        if has_wind:
+            mermaid_code += f"Wind --> Rectifier_Wind\n"
+            mermaid_code += f"Rectifier_Wind --> Microgrid\n"
+        if has_battery:
+            mermaid_code += "Battery <--> Microgrid\n"
+        if has_generator:
+            mermaid_code += "Generator --> Rectifier_Generator\n"
+            mermaid_code += "Rectifier_Generator --> Microgrid\n"
+
+    # Add final connection to Load
+    mermaid_code += "Microgrid --> Load\n"
+
+    # Wrap Mermaid code in the HTML template
+    mermaid_html = f"""
+    <div class="mermaid">
+    {mermaid_code}
+    </div>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({{
+            startOnLoad: true,
+            theme: 'dark',
+        }});
+    </script>
+    """
+
+    # Display the generated Mermaid flowchart
+    st.components.v1.html(mermaid_html, height=700)

@@ -5,7 +5,7 @@ This module contains the Streamlit page for uploading the model's output data.
 import streamlit as st
 import pandas as pd
 from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface, time_format_timezone_selectors, load_csv_data, load_timeseries_csv_with_timezone
+from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface, time_format_selectors, load_csv_data, load_timeseries_csv
 import numpy as np
     
 def save_data(resource_data: pd.DataFrame, project_name: str, resource_name: str) -> None:
@@ -53,8 +53,8 @@ def upload_model_output(resource) -> None:
         if uploaded_file:
             # Select Time column
             with st.expander(f"Time", expanded=False):
-                time_format, timezone = time_format_timezone_selectors()
-                time_data = load_timeseries_csv_with_timezone(uploaded_file, delimiter, decimal, time_format, timezone)
+                time_format = time_format_selectors()
+                time_data = load_timeseries_csv(uploaded_file, delimiter, decimal, time_format)
             with st.expander(f"Data", expanded=False):
                 data_dict = {}
 
@@ -74,14 +74,17 @@ def upload_model_output(resource) -> None:
                         energy_output_data = energy_output_data * 1e6
                     data_dict[f'Model {resource} Energy Total [Wh]'] = energy_output_data.values.flatten() if energy_output_data is not None else None
                     if resource == "solar_pv" or resource == "wind":
-                        st.session_state[f'{resource}_curtailment'][0] = st.toggle("Curtailment", value=st.session_state[f'{resource}_curtailment'][0])
                         if st.session_state[f'{resource}_curtailment'][0]:
                             col1, col2 = st.columns(2)
                             with col1:
                                 st.session_state[f'{resource}_curtailment'][0] = st.toggle("Curtailment", value=st.session_state[f'{resource}_curtailment'][0])
                             with col2:
-                                    curtailment_data = load_csv_data(uploaded_file, delimiter, decimal, 'Model {resource} Used Energy Total [Wh]')
-                                    data_dict[f'Model {resource} Used Energy Total [Wh]'] = curtailment_data.values.flatten() if curtailment_data is not None else None
+                                    curtailment_data = load_csv_data(uploaded_file, delimiter, decimal, 'Curtailed Energy Total')
+                                    if energy_unit == 'kWh':
+                                        curtailment_data = curtailment_data * 1e3
+                                    elif energy_unit == 'MWh':
+                                        curtailment_data = curtailment_data * 1e6
+                                    data_dict[f'Model {resource} Curtailed Energy Total [Wh]'] = curtailment_data.values.flatten() if curtailment_data is not None else None
                     # Select Fuel Consumption
                     if resource == "generator":
                         col1, col2 = st.columns(2)
@@ -99,7 +102,7 @@ def upload_model_output(resource) -> None:
 
                 elif st.session_state[f'{resource}_model_output_scope'] == "Per Unit":
                     total_energy_output = None
-                    total_used_energy_output = None
+                    total_curtailed_energy_output = None
                     total_fuel_consumption = None
                     for unit in range(st.session_state[f'{resource}_num_units']):
                         # Select Energy Production
@@ -129,25 +132,25 @@ def upload_model_output(resource) -> None:
                             if st.session_state[f'{resource}_curtailment'][unit]:
                                 col1, col2 = st.columns(2)
                                 with col1:
-                                    curtailment_data = load_csv_data(uploaded_file, delimiter, decimal, 'Model {resource} Used Energy Unit {unit + 1} [Wh]')
-                                    data_dict[f'Model {resource} Used Energy Unit {unit + 1} [Wh]'] = curtailment_data.values.flatten() if curtailment_data is not None else None
+                                    curtailment_data = load_csv_data(uploaded_file, delimiter, decimal, 'Curtailed Energy Unit {unit + 1}')
+                                    data_dict[f'Model {resource} Curtailed Energy Unit {unit + 1} [Wh]'] = curtailment_data.values.flatten() if curtailment_data is not None else None
                                 with col2:
-                                    used_energy_unit = st.selectbox(
+                                    curtailed_energy_unit = st.selectbox(
                                         f"Select the unit of the {resource} output:",
                                         ['Wh', 'kWh', 'MWh'],
                                         key=f"unit_curtailment_key_{unit}"
                                     )
                                 if curtailment_data is not None:
                                     st.write('here')
-                                    if used_energy_unit == 'kWh':
+                                    if curtailed_energy_unit == 'kWh':
                                         curtailment_data = curtailment_data * 1e3
-                                    elif used_energy_unit == 'MWh':
+                                    elif curtailed_energy_unit == 'MWh':
                                         curtailment_data = curtailment_data * 1e6
-                                    data_dict[f'Model {resource} Used Energy Unit {unit + 1} [Wh]'] = curtailment_data.values.flatten()
-                                    if total_used_energy_output is None:
-                                        total_used_energy_output = curtailment_data.values.flatten()
+                                    data_dict[f'Model {resource} Curtailed Energy Unit {unit + 1} [Wh]'] = curtailment_data.values.flatten()
+                                    if total_curtailed_energy_output is None:
+                                        total_curtailed_energy_output = curtailment_data.values.flatten()
                                     else:
-                                        total_used_energy_output = np.add(total_used_energy_output, curtailment_data.values.flatten())
+                                        total_curtailed_energy_output = np.add(total_curtailed_energy_output, curtailment_data.values.flatten())
                         # Select Fuel Consumption
                         if resource == "generator":
                             col1, col2 = st.columns(2)
@@ -178,8 +181,8 @@ def upload_model_output(resource) -> None:
 
                     # Assign the total values after processing all units
                     data_dict[f'Model {resource} Energy Total [Wh]'] = total_energy_output
-                    if total_used_energy_output is not None:
-                        data_dict[f'Model {resource} Used Energy Total [Wh]'] = total_energy_output
+                    if total_curtailed_energy_output is not None:
+                        data_dict[f'Model {resource} Curtailed Energy Total [Wh]'] = total_energy_output
                     if resource == "generator":
                         if st.session_state.generator_fuel_consumption_scope[unit] == 'Time Series':
                             data_dict[f'Model Fuel Consumption Total [l]'] = total_fuel_consumption
@@ -188,7 +191,7 @@ def upload_model_output(resource) -> None:
                 if time_data is not None and all(value is not None for value in data_dict.values()):
                     # Combine all data into a single DataFrame (for all elements)
                     data = pd.DataFrame({
-                        'UTC Time': time_data.values,
+                        'Time': time_data.values,
                         **{k: v for k, v in data_dict.items() if v is not None}  # Dynamically unpack the dictionary and filter None values
                     })
 

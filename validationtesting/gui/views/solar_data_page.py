@@ -6,11 +6,11 @@ The user can upload their own solar irradiation data or download it from PVGIS.
 import streamlit as st
 import pandas as pd
 from config.path_manager import PathManager
-from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface, time_format_timezone_selectors, load_csv_data, load_timeseries_csv_with_timezone
+from validationtesting.gui.views.utils import initialize_session_state, csv_upload_interface, time_format_selectors, load_csv_data, load_timeseries_csv
 import datetime as dt
 import requests
 
-def download_pvgis_pv_data(lat, lon) -> pd.DataFrame:
+def download_pvgis_pv_data(lat, lon, timezone) -> pd.DataFrame:
     """
     Function to download solar irradiation data from PVGIS.
     """
@@ -33,9 +33,15 @@ def download_pvgis_pv_data(lat, lon) -> pd.DataFrame:
     tmy_df.rename(columns={'time(UTC)': 'UTC Time', 'T2m': 'Temperature [°C]', 'G(h)': 'GHI [W/m^2]', 'Gd(h)': 'DHI [W/m^2]'}, inplace=True)
     tmy_df = tmy_df[['UTC Time', 'Temperature [°C]', 'GHI [W/m^2]', 'DHI [W/m^2]']]
 
-    # Convert 'UTC Time' column to 'MM-DD HH:MM' format
+    tmy_df['UTC Time'] = tmy_df['UTC Time'].astype(str)
     tmy_df['UTC Time'] = pd.to_datetime(tmy_df['UTC Time'], format='%Y%m%d:%H%M')
+    # Force all dates to 2023 to remove leap year issues
+    tmy_df['UTC Time'] = tmy_df['UTC Time'].apply(lambda x: x.replace(year=2023))
+    tmy_df['UTC Time'] = tmy_df['UTC Time'].dt.tz_localize('UTC').dt.tz_convert(timezone)
+    tmy_df['UTC Time'] = tmy_df['UTC Time'].apply(lambda x: x.replace(year=2023))
+    tmy_df = tmy_df.sort_values(by='UTC Time')
     tmy_df['UTC Time'] = tmy_df['UTC Time'].dt.strftime('%m-%d %H:%M')
+    tmy_df.rename(columns={'UTC Time': 'Time'}, inplace=True)
 
     return tmy_df
 
@@ -79,8 +85,8 @@ def irradiation_data() -> None:
             uploaded_file, delimiter, decimal = csv_upload_interface(f"solar")
             if uploaded_file:
                 with st.expander(f"Time", expanded=False):
-                    time_format, timezone = time_format_timezone_selectors()
-                    time_data = load_timeseries_csv_with_timezone(uploaded_file, delimiter, decimal, time_format, timezone)
+                    time_format = time_format_selectors()
+                    time_data = load_timeseries_csv(uploaded_file, delimiter, decimal, time_format)
                 with st.expander(f"Data", expanded=False):
                                 # Dropdown for selecting the input type
                     st.session_state.selected_input_type = st.selectbox(
@@ -131,7 +137,7 @@ def irradiation_data() -> None:
                 if time_data is not None and all(value is not None for value in data_dict.values()):
                     # Combine all data into a single DataFrame (for all elements)
                     irradiation_data = pd.DataFrame({
-                        'UTC Time': time_data.values,
+                        'Time': time_data.values,
                         **data_dict 
                     })
 
@@ -159,7 +165,8 @@ def irradiation_data() -> None:
 
                     irradiation_data = download_pvgis_pv_data( 
                         lat=st.session_state.lat, 
-                        lon=st.session_state.lon
+                        lon=st.session_state.lon,
+                        timezone=st.session_state.timezone
                     )
 
                     save_solar_irradiation_data(irradiation_data, project_name)

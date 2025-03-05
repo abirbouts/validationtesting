@@ -8,7 +8,7 @@ options to select the project location either by entering an address, clicking o
 import streamlit as st
 import folium
 import datetime as dt
-from validationtesting.gui.views.utils import initialize_session_state
+from validationtesting.gui.views.utils import initialize_session_state, timezone_selector, generate_flow_chart
 from streamlit_folium import st_folium
 from geopy.geocoders import Nominatim
 from geopy.exc import GeopyError
@@ -48,12 +48,14 @@ def general() -> None:
     # Define start and end date for the project
     start_date = st.date_input("Start Date", 
                                value=st.session_state.start_date.date())
-    start_date = dt.datetime.combine(start_date, dt.time.min)
+    st.session_state.start_date = dt.datetime.combine(start_date, dt.time.min)
     
     end_date = st.date_input("End Date", 
                              value=st.session_state.end_date)
-    st.session_state.end_date = dt.datetime.combine(end_date, dt.time.min)
+    st.session_state.end_date = dt.datetime.combine(end_date, dt.time(23, 0))
     
+    timezone_selector()
+
     # Define discount rate
     if st.session_state.economic_validation:
         st.session_state.discount_rate = st.number_input("Discount Rate (%)", 

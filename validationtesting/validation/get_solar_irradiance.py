@@ -6,6 +6,9 @@ This module contains functions to calculate the total solar irradiance on a tilt
 from math import radians as rad, sin, cos, acos, degrees, pi
 import logging
 import numpy as np
+import datetime as dt
+from datetime import datetime
+import pytz
 
 def with_GHI_DHI(
     theta_tilt: float, 
@@ -15,13 +18,16 @@ def with_GHI_DHI(
     lat: float, 
     lon: float,
     day_of_year: int, 
-    UTC_time: float, 
+    time: datetime, 
+    time_zone: float,
     azimuth: float) -> float:
     """
     Calculate the total solar irradiance on a tilted surface using Global Horizontal Irradiance (GHI) 
     and Diffuse Horizontal Irradiance (DHI).
     """
-
+    time_zone_obj = pytz.timezone(time_zone)
+    time = time_zone_obj.localize(time)
+    offset = time.utcoffset() / dt.timedelta(hours=1)
     rad_theta_tilt = rad(theta_tilt)
     rad_lat = rad(lat)
     rad_lon = rad(lon)
@@ -35,7 +41,7 @@ def with_GHI_DHI(
     
     EOT = 229.2 * (0.000075 + 0.001868 * cos(rad_B) - 0.032077 * sin(rad_B) - 0.014615 * cos(2 * rad_B) - 0.04089 * sin(2 * rad_B))  # equation of time
     
-    LST = UTC_time + lon / 15 + EOT / 60  # local solar time
+    LST = (time.hour + (lon / 15 - offset) + (EOT / 60)) % 24
     
     omega = 15 * (LST - 12)  # hour angle
     rad_omega = rad(omega)
@@ -75,9 +81,6 @@ def with_GHI_DHI(
 
     # Total irradiance
     I_total = I_beam + I_diffuse + I_reflected
-    if day_of_year == 130:
-        logging.info(f"theta_tilt: {theta_tilt}, GHI: {GHI}, DHI: {DHI}, rho: {rho}, lat: {lat}, lon: {lon}, day_of_year: {day_of_year}, UTC_time: {UTC_time}, azimuth: {azimuth}")
-        logging.info(f"I_beam: {I_beam}, I_diffuse: {I_diffuse}, I_reflected: {I_reflected}, I_total: {I_total}")
     return I_total
 
 
