@@ -56,7 +56,7 @@ def enter_specifications(i: int) -> None:
             if len(st.session_state.pv_nominal_power) != st.session_state.num_solar_pv_types:
                 st.session_state.pv_nominal_power = [0.0] * st.session_state.num_solar_pv_types
             st.session_state.pv_nominal_power[i] = st.number_input(
-                f"Type {i+1} PV nominal power [kW]:", 
+                f"Type {i+1} PV nominal power [W]:", 
                 min_value=0.0, 
                 value=st.session_state.pv_nominal_power[i])
 

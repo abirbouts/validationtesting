@@ -212,7 +212,6 @@ class SolarIrradiation(BaseModel):
         albedo_coefficient (float): The albedo coefficient.
     """
     # Parameters
-    solar_irradiation_selected_input_type: str
     solar_irradiation_delimiter: str
     solar_irradiation_decimal: str
     solar_irradiation_time_format: str

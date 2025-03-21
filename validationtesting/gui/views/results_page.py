@@ -35,7 +35,7 @@ def flag_details(df, component) -> None:
     """
     Display the timestamps where the difference between the model and benchmark exceeds a certain threshold.
     """
-    flagged_df = df[df['Difference Exceeds 10%']]
+    flagged_df = df[df['Difference Exceeds 2%']]
     flagged_df = flagged_df.reset_index()[['Time', f'Model {component} Energy Total [Wh]', f'Benchmark {component} Energy Total [Wh]']]
     st.write(flagged_df)
 
@@ -113,13 +113,13 @@ def add_difference_flag(component: str) -> pd.DataFrame:
         raise ValueError(f"Required columns for {component} are not in the dataset.")
 
     # Calculate the percentage difference and add a new column
-    df['Difference Exceeds 10%'] = abs(df[model_col] - df[benchmark_col]) > (0.10 * df[benchmark_col])
+    df['Difference Exceeds 2%'] = abs(df[model_col] - df[benchmark_col]) > (0.02 * df[benchmark_col])
 
     # Save the updated DataFrame back to the file
     updated_data_path = PathManager.PROJECTS_FOLDER_PATH / str(project_name) / "results" / f"combined_model_benchmark_with_flag.csv"
     df.to_csv(updated_data_path)
-    flag_count = df['Difference Exceeds 10%'].sum()
-    st.metric(label="Deviation exceeds 10%", value=flag_count)
+    flag_count = df['Difference Exceeds 2%'].sum()
+    st.metric(label="Deviation exceeds 2%", value=flag_count)
     if st.button(f"View details", key = f"{component}_flag_count"):
         flag_details(df, component)
     return

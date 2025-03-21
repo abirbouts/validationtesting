@@ -334,16 +334,16 @@ def generate_flow_chart() -> None:
     mermaid_code = "flowchart TB\n"
     if st.session_state.current_type == "Alternating Current":
         if has_solar and st.session_state.solar_pv_connection_type == "Connected with the same Inverter as the Battery to the Microgrid":
-            mermaid_code += "subgraph Shared_System [DC Subystem]\n"
-            mermaid_code += f"Solar_PV --> DC_System\n"
-            mermaid_code += "Battery <--> DC_System\n"
-            mermaid_code += "DC_System <--> Inverter_DC_System\n"
+            mermaid_code += "subgraph Shared_System[DC Subystem]\n"
+            mermaid_code += f"Solar_PV[Solar PV] --> DC_System[DC System]\n"
+            mermaid_code += "Battery <--> DC_System[DC System]\n"
+            mermaid_code += "DC_System[DC System] <--> Inverter_DC_System[Inverter DC System]\n"
             mermaid_code += "end\n"
-            mermaid_code += "Inverter_DC_System <--> Microgrid\n"
+            mermaid_code += "Inverter_DC_System[Inverter DC System] <--> Microgrid\n"
             if has_wind:
                 if st.session_state.wind_connection_type == "Connected with a AC-AC Converter to the Microgrid":
-                    mermaid_code += f"Wind --> AC-AC_Converter_Wind\n"
-                    mermaid_code += f"AC-AC_Converter_Wind --> Microgrid\n"
+                    mermaid_code += f"Wind --> AC-AC_Converter_Wind[AC-AC Converter Wind]\n"
+                    mermaid_code += f"AC-AC_Converter_Wind[AC-AC Converter Wind] --> Microgrid\n"
                 else:
                     mermaid_code += f"Wind --> Microgrid\n"
             if has_generator:
@@ -351,31 +351,31 @@ def generate_flow_chart() -> None:
 
         else:
             if has_solar and st.session_state.solar_pv_connection_type == "Connected with a seperate Inverter to the Microgrid":
-                    mermaid_code += f"Solar_PV --> Inverter_Solar_PV\n"
-                    mermaid_code += f"Inverter_Solar_PV --> Microgrid\n"
+                    mermaid_code += f"Solar_PV[Solar PV] --> Inverter_Solar_PV[Inverter Solar PV]\n"
+                    mermaid_code += f"Inverter_Solar_PV[Inverter Solar PV] --> Microgrid\n"
             if has_wind:
                 if st.session_state.wind_connection_type == "Connected with a AC-AC Converter to the Microgrid":
-                    mermaid_code += f"Wind --> AC-AC_Converter_Wind\n"
-                    mermaid_code += f"AC-AC_Converter_Wind --> Microgrid\n"
+                    mermaid_code += f"Wind --> AC-AC_Converter_Wind[AC-AC Converter Wind]\n"
+                    mermaid_code += f"AC-AC_Converter_Wind[AC-AC Converter Wind] --> Microgrid\n"
                 else:
                     mermaid_code += f"Wind --> Microgrid\n"
             if has_battery:
-                mermaid_code += "Battery <--> Inverter_Battery\n"
-                mermaid_code += "Inverter_Battery <--> Microgrid\n"
+                mermaid_code += "Battery <--> Inverter_Battery[Inverter Battery]\n"
+                mermaid_code += "Inverter_Battery[Inverter Battery] <--> Microgrid\n"
             if has_generator:
                 mermaid_code += "Generator --> Microgrid\n"
     
     else:
         if has_solar:
-            mermaid_code += f"Solar_PV --> Microgrid\n"
+            mermaid_code += f"Solar_PV[Solar PV] --> Microgrid\n"
         if has_wind:
-            mermaid_code += f"Wind --> Rectifier_Wind\n"
-            mermaid_code += f"Rectifier_Wind --> Microgrid\n"
+            mermaid_code += f"Wind --> Rectifier_Wind[Rectifier Wind]\n"
+            mermaid_code += f"Rectifier_Wind[Rectifier Wind] --> Microgrid\n"
         if has_battery:
             mermaid_code += "Battery <--> Microgrid\n"
         if has_generator:
-            mermaid_code += "Generator --> Rectifier_Generator\n"
-            mermaid_code += "Rectifier_Generator --> Microgrid\n"
+            mermaid_code += "Generator --> Rectifier_Generator[Rectifier Generator]\n"
+            mermaid_code += "Rectifier_Generator[Rectifier Generator] --> Microgrid\n"
 
     # Add final connection to Load
     mermaid_code += "Microgrid --> Load\n"
